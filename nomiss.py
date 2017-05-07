@@ -27,7 +27,7 @@ for line in f:
                 j += 1
         else:
             k += 1
-    print '%s\t%s\t%s\t%d' % (parts[0], parts[1], parts[2], float(parts[3]))
+    print '%s\t%s\t%s\t%f' % (parts[0], parts[1], parts[2], float(parts[3]))
 
     if k == SIZE - 1:
         k = 0
