@@ -1,2 +1,6 @@
 a.out
 *~
+resource
+.idea
+*.iml
+.DS_Store
