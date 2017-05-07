@@ -788,7 +788,7 @@ int main(int argc, char * argv[]){
     uni_total += uni_prob;
   }
   for(i = 0; i < plain_num; i++){
-     if(*(unigram + i) != -1){
+     if((*(unigram + i) != -1) && isfinite(*(unigram + i))){
        *(unigram + i) += log(uni_total);
      } else {
        *(unigram + i) = -1;
@@ -834,7 +834,7 @@ int main(int argc, char * argv[]){
     bi_total += bi_prob;
   }
   for(i = 0; i < p_2; i++){
-     if(*(bigram + i) != -1){
+     if((*(bigram + i) != -1) && isfinite(*(unigram + i))){
        *(bigram + i) += log(bi_total);
      } else {
        *(bigram + i) = -1;
@@ -886,7 +886,7 @@ int main(int argc, char * argv[]){
     tri_total += tri_prob;
   }
   for(i = 0; i < p_3; i++){
-     if(*(trigram + i) != -1){
+     if((*(trigram + i) != -1) && isfinite(*(unigram + i))){
        *(trigram + i) += log(tri_total);
      } else {
        *(trigram + i) = -1;
