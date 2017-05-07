@@ -11,7 +11,7 @@ def getKey():
 		r = randint(0, len(mapping)-1)
 		key[chr(i)] = mapping.pop(r)
 	# ' ' is assumed to be known
-	key[' '] = ' '
+	key[' '] = '_'
 	return key
 
 ''' Encodes plaintext file with a random mappign into cipher text.
@@ -19,12 +19,12 @@ def getKey():
 def cipher(plaintext_filename):
 	key = getKey();
 	f = open(plaintext_filename, 'r')
-	s = ""
+	cipher = open('A-cypher.txt', 'w')
 	for l in f:
 		for c in l:
-			s += key[c]
+			cipher.write(key[c])
 	pprint(key)
-	print s
+	cipher.close()
 
 parser = argparse.ArgumentParser()
 parser.add_argument("plaintext_filename");
