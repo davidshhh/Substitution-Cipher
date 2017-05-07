@@ -51,7 +51,7 @@ float * unigram;
 float * bigram;
 float * trigram;
 
-// 
+// Maps characters to the integers representations
 
 map<char, int> inv_cipher;
 map<char, int> inv_plain;
@@ -762,7 +762,7 @@ int main(int argc, char * argv[]){
 
   unigram = (float *) malloc(plain_num * sizeof(float));
   for(i = 0; i < plain_num; i++){
-    *(unigram + i) = 1;
+    *(unigram + i) = -1;
   }
   ifstream unigrams_file(unigram_name.c_str());
   string temp;
@@ -788,7 +788,7 @@ int main(int argc, char * argv[]){
     uni_total += uni_prob;
   }
   for(i = 0; i < plain_num; i++){
-     if(*(unigram + i) <= 0){
+     if(*(unigram + i) != -1){
        *(unigram + i) += log(uni_total);
      } else {
        *(unigram + i) = -1;
@@ -803,7 +803,7 @@ int main(int argc, char * argv[]){
   int p_2 = plain_num * plain_num;
   bigram = (float *) malloc(p_2 * sizeof(float));
   for(i = 0; i < p_2; i++){
-    *(bigram + i) = 1;
+    *(bigram + i) = -1;
   }
   ifstream bigrams_file(bigram_name.c_str());
   float bi_total = 0;
@@ -834,7 +834,7 @@ int main(int argc, char * argv[]){
     bi_total += bi_prob;
   }
   for(i = 0; i < p_2; i++){
-     if(*(bigram + i) <= 0){
+     if(*(bigram + i) != -1){
        *(bigram + i) += log(bi_total);
      } else {
        *(bigram + i) = -1;
@@ -849,7 +849,7 @@ int main(int argc, char * argv[]){
   int p_3 = plain_num * plain_num * plain_num;
   trigram = (float *) malloc(p_3 * sizeof(float));
   for(i = 0; i < p_3; i++){
-    *(trigram + i) = 1;
+    *(trigram + i) = -1;
   }
   ifstream trigrams_file(trigram_name.c_str());
   float tri_total = 0;
@@ -886,7 +886,7 @@ int main(int argc, char * argv[]){
     tri_total += tri_prob;
   }
   for(i = 0; i < p_3; i++){
-     if(*(trigram + i) <= 0){
+     if(*(trigram + i) != -1){
        *(trigram + i) += log(tri_total);
      } else {
        *(trigram + i) = -1;
@@ -1010,7 +1010,7 @@ int main(int argc, char * argv[]){
 
     map<int, int> curr_soln = aStar.top().second;
     float curr_soln_prob = aStar.top().first;
-    for(i = 0; i < plain_num; i++){
+    for(i = 0; i < plain_num; i++){  // Copy all curr soln to curr_soln_arr
       if(curr_soln.count(i) > 0){
         *(curr_soln_arr + i) = curr_soln[i];
       } else {
@@ -1024,6 +1024,7 @@ int main(int argc, char * argv[]){
     cout << "Starting Viterbi Algorithm: \n" << endl;
     cout << "  Queue size: " << (aStar.size() + 1) << "\n" << endl;
     cout << "  Solution size: " << curr_soln.size() << "\n" << endl;
+    cout << "  Solution probability " << curr_soln_prob << "\n" << endl;
     cout << "  Number of passes: " << pass_num++ << "\n" << endl;
     
     stringstream temp_soln;
