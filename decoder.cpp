@@ -703,7 +703,8 @@ int main(int argc, char * argv[]){
 
     cout << "Starting Viterbi Algorithm: \n" << endl;
     cout << "  Queue size: " << (aStar.size() + 1) << "\n" << endl;
-    cout << "  Solution size: " << curr_soln_size << "\n" << endl;
+    cout << "  Solution size: " << curr_soln_size << endl;
+    cout << "  Solution probability " << curr_soln_prob << endl;
     cout << "  Number of passes: " << ++pass_num << "\n" << endl;
     
     stringstream temp_soln;
