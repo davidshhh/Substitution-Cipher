@@ -4,3 +4,7 @@ resource
 .idea
 *.iml
 .DS_Store
+
+decoderc
+decodercuda
+lmtrain_nyt_word.patlst
