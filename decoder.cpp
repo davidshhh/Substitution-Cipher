@@ -417,7 +417,7 @@ int main(int argc, char * argv[]){
   // unigram is array such that index for i = base(bigram) + i
   unigram = (double *) malloc(plain_num * sizeof(double));
   for(i = 0; i < plain_num; i++){
-    *(unigram + i) = 1;
+    *(unigram + i) = -1;
   }
   ifstream unigrams_file(unigram_name.c_str());
   string temp;
@@ -443,7 +443,7 @@ int main(int argc, char * argv[]){
     uni_total += uni_prob;
   }
   for(i = 0; i < plain_num; i++){
-     if(*(unigram + i) <= 0){
+     if(*(unigram + i) != -1){
        *(unigram + i) += log(uni_total);
      } else {
        *(unigram + i) = -1;
@@ -458,7 +458,7 @@ int main(int argc, char * argv[]){
   int p_2 = plain_num * plain_num;
   bigram = (double *) malloc(p_2 * sizeof(double));
   for(i = 0; i < p_2; i++){
-    *(bigram + i) = 1;
+    *(bigram + i) = -1;
   }
   ifstream bigrams_file(bigram_name.c_str());
   double bi_total = 0;
@@ -489,7 +489,7 @@ int main(int argc, char * argv[]){
     bi_total += bi_prob;
   }
   for(i = 0; i < p_2; i++){
-     if(*(bigram + i) <= 0){
+     if(*(bigram + i) != -1){
        *(bigram + i) += log(bi_total);
      } else {
        *(bigram + i) = -1;
@@ -505,7 +505,7 @@ int main(int argc, char * argv[]){
   int p_3 = plain_num * plain_num * plain_num;
   trigram = (double *) malloc(p_3 * sizeof(double));
   for(i = 0; i < p_3; i++){
-    *(trigram + i) = 1;
+    *(trigram + i) = -1;
   }
   ifstream trigrams_file(trigram_name.c_str());
   double tri_total = 0;
@@ -542,7 +542,7 @@ int main(int argc, char * argv[]){
     tri_total += tri_prob;
   }
   for(i = 0; i < p_3; i++){
-     if(*(trigram + i) <= 0){
+     if(*(trigram + i) != -1){
        *(trigram + i) += log(tri_total);
        threshold = fmax(threshold, *(trigram + i));
      } else {
