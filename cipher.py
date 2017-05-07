@@ -30,9 +30,10 @@ def cipher(plaintext_filename, outfile, length):
         for c in l:
             out.write(key[c])
             count += 1
-            if c == ' ' and count >= length:
+            if count >= length and c == ' ':
                 pprint(key)
                 out.close()
+                print count
                 return
     pprint(key)
     out.close()
@@ -41,7 +42,7 @@ def cipher(plaintext_filename, outfile, length):
 parser = argparse.ArgumentParser()
 parser.add_argument("plaintext_filename")
 parser.add_argument("output_filename")
-parser.add_argument("--length", default=6000)
+parser.add_argument("--length", type=int, default=6000)
 
 args = parser.parse_args()
 
