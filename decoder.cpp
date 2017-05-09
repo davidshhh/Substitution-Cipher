@@ -10,7 +10,6 @@
 #include <queue>
 #include <time.h>
 #include <sstream>
-//#include "genviterbi.h"
 
 using namespace std;
 
@@ -48,9 +47,9 @@ int * cipher_string;
 // Bigram: P(x | y) = *(bigram + x + y * plain_num)
 // Trigram: P(x | zy) = *(trigram + x + y * plain_num + z * plain_num * plain_num)
 
-float * unigram;
-float * bigram;
-float * trigram;
+double * unigram;
+double * bigram;
+double * trigram;
 
 // Maps characters to the integers representations
 
