@@ -835,7 +835,8 @@ int main(int argc, char * argv[]){
   }
   for(i = 0; i < p_2; i++){
      if((*(bigram + i) != -1) && isfinite(*(bigram + i))){
-       // *(bigram + i) += log(bi_total);  // TODO: shouldn't normalize like this, lets not normalize to keep fairness
+       // TODO: I think it shouldn't normalize like this, but experiments showed better results with this
+       *(bigram + i) += log(bi_total);
      } else {
        *(bigram + i) = -1;
      }
@@ -887,7 +888,8 @@ int main(int argc, char * argv[]){
   }
   for(i = 0; i < p_3; i++){
      if((*(trigram + i) != -1) && isfinite(*(trigram + i))){
-       // *(trigram + i) += log(tri_total);  // TODO: shouldn't normalize like this, lets not normalize to keep fairness
+       // TODO: I think it shouldn't normalize like this, but experiments showed better results with this
+       *(trigram + i) += log(tri_total);
      } else {
        *(trigram + i) = -1;
      }
