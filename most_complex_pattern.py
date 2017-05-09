@@ -13,22 +13,23 @@ def count(pattern_file):
     for l in pf:
         items = l.split()
 
-        if (items[0] == '2'):
+        if items[0] == '2':
             outfile.close()
             break
 
         outfile.write(l)
         pattern = items[1]
         num_pattern = len(items) - 2
-        max_count = num_pattern if num_pattern > max_count else max_count
+        max_count = len(pattern) if len(pattern) > max_count else max_count
         total_count += num_pattern
         total_lines += 1
         for c in pattern:
             if c not in check:
                 check.add(c)
+                print pattern
     
     print 'average words per pattern is {}'.format(total_count / total_lines)
-    print 'max number of words per attern is {}'.format(max_count)
+    print 'max number of characters per pattern is {}'.format(max_count)
     pprint(check)
     print '{} characters were used in pattern'.format(len(check))
 
