@@ -14,28 +14,64 @@
 
 using namespace std;
 
-// Global definitions
+/* --------------------------------- Global Definitions ------------------------------------ */
+
+// In order:  the number of plaintext letters, the number of ciphertext letters, and the
+//            length of the cipher.
 
 int plain_num;
 int cipher_num;
 long cipher_length;
 
-double * greenhouse;
-int * backpointers;
+// Character vectors to represent the plaintext and ciphertext letters.
+
+// These are only used in setting up: in the actual algorithm, the first ciphertext letter
+// is given the index 0, the second the index 1, and so on.  So if the ciphertext letters are
+// '_', 'a', and 'b', then 'ab ba' would be transformed into '1, 2, 0, 2, 1'.
+// This allows us to just use the ciphertext letters and plaintext letters as indices, without
+// an extra read into memory.  It has proven to speed up the program.
 
 vector<char> cipher_alpha(0);
 vector<char> plain_alpha(0);
+
+// These hold the cipher string (as said before, as numbers, not as characters).
+// The vector is used in setting up, since we don't know the size of the cipher beforehand.
+// Once the string is read and the vector is full, we allocate the array for all future use.
+// This is done for speed.
+
 vector<int> cipher_string_vec(0);
 int * cipher_string;
 
-double * unigram;
-double * bigram;
-double * trigram;
+// Arrays to hold the unigram, bigram, and trigram probabilities.
+// They are all one - dimensional.  Probabilities are accessed as follows:
+// Unigram: P(x) = *(unigram + x)
+// Bigram: P(x | y) = *(bigram + x + y * plain_num)
+// Trigram: P(x | zy) = *(trigram + x + y * plain_num + z * plain_num * plain_num)
+
+float * unigram;
+float * bigram;
+float * trigram;
+
+// Maps characters to the integers representations
 
 map<char, int> inv_cipher;
 map<char, int> inv_plain;
 
-// classes
+// greenhouse and backpointers are the tables - greenhouse holds the probabilities, 
+// and backpointers the back pointers.
+
+double * greenhouse;
+int * backpointers;
+
+/* ------------------------------End Global Definitions ------------------------------------ */
+
+/* ---------------------------------------- Classes ---------------------------------------- */
+
+// This class is just a comparison function for the A* heap.  It looks as pairs of probailities
+// and partial solutions, and orders them according to the probability.  On a tie, the larger 
+// solution is given precedence.
+// (Note: the probabilities are in the negative log domain, so will seem backwards.)
+
 class pair_compare
 {
 
@@ -46,10 +82,7 @@ public:
   }
 };
 
-
-class partsoln
-{
-};
+/* ------------------------------------ End Classes ---------------------------------------- */
 
 
 
@@ -58,20 +91,64 @@ class partsoln
 
 
 
+/* -------------------------------- General Functions -------------------------------------- */
 
-
-
-
+// This is the actual generalized Viterbi algorithm.  The conceptual details should already be known, so the details are:
+//   (1) set up the block size to determine the number of threads per block.
+//   (2) run the first column in parallel.
+//   (3) run the second column in parallel.
+//   (4) run the third column in parallel.
+//   (4) succesively run the every remaining column in parallel.
+//   (5) once finished, find the best probability over every remaining plaintext letter k,
+//       where k points to the next ciphertext letter to be fixed.  This is done by looking at 
+//       greenhouse(cipher_length - 1, l, k) for every possible l, and taking the best result.
+//       put these into the result array.
+//
+//   The columns are treated differently for these reasons:
+//     Column one can only use the unigram statistics.
+//     Column two can only use bigram statistics.
+//     Column three can't use back pointers.
+//     The remaining columns can use everything.
+//     I've seperated them into different functions, rather than different branches, so that the time taken to 
+//     decide which branch to use is mininmized.
+//
+// Parameters:
+//   -b: The next ciphertext letter to be fixed.
+//   -plain_num: the number of plaintext letters.
+//   -cipher_num: the number of ciphertext letters.
+//   -part_soln: an array holding the current guess of the partial solution.  It always holds
+//               all of the plaintext letters, but the ones that are not yet set all point to -1.
+//               (indices are plaintext letters, values are ciphertext).  This is a CUDA array, but isn't
+//               listed as such.
+//   -cuda_inv_soln_arr: An inverse solution - like the above parameter, but maps ciphertext to plaintext.
+//   -cipher_string: The array of integers representing the cipher.
+//   -cipher_length: the length of the cipher.
+//   -result: an array of length plain_num giving, for each plaintext letter, the best possible probability
+//            of a path that assigns that plaintext letter to b, the next ciphertext letter to be fixed.
+//    This is basically an array to be changed in place for the return values.
+//   -(uni|bi|tri)gram: CUDA arrays representing the unigrams, bigrams, and trigrams.
+//   -greenhouse, backpointers: CUDA arrays holding the greenhouse table and the associated backpointers.
+//    the greenhouse table holds the probabilities, and the backpointer table holds the back pointers.
+//   -tempResult: a table meant to hold the final greenhouse table so it can be refined into the results array.
+//    (recall: (1) We can't read directly from a CUDA array, so we have to transfer it. (2) If we pass it in this way,
+//    we can reuse it, and so save a hassle with memory management.)
+//    -totalSize: The size of the greenhouse table.  We need to have it to transfer between the greenhouse and the 
+//               tempResult table.
+//
+// Returns: Nothing, but alters the results array in place.
+// TODO: This documentation is from the CUDA version decoder.cu, we may want to re-read the code if we use this function.
 
 void genviterbi(int len, int plain_num, int cipher_num, int * part_soln, int * cipher_string, long cipher_length, double * result, double * unigram, double * bigram, double * trigram, double * greenhouse, int * backpointers, double threshold){
 
   // loop variables
+  //   -i: the index of the column of the greenhouse and backpointer tables that are being filled.
   int i;
   int l;
   int b;
   int k;
 
   // the value of the cipher at the psotion i, i - 1, and i - 2 in the code.
+  //   -(c|c1|c2): The current / previous / second previous letter in the cipher at index i.
   int c;
   int c1;
   int c2;
@@ -343,6 +420,7 @@ void genviterbi(int len, int plain_num, int cipher_num, int * part_soln, int * c
   free(part_inv);
 }
 
+/* ---------------------------- End General Functions -------------------------------------- */
 
 
 
@@ -350,8 +428,53 @@ void genviterbi(int len, int plain_num, int cipher_num, int * part_soln, int * c
 
 
 
+/* ------------------------------------ Main------------------------------------------------ */
 
-
+// The main program.
+//
+// Calling procedure: If this program is compiled with the name "greenhouse", type
+//   >> greenhouse profile
+// in the command line, where profile is the name of the profile to be used.
+//
+//   profiles have the format:
+//   line 1: all ciphertext letters, seperated by spaces.
+//   line 2: all plaintext letters, seperated by spaces.
+//   line 3: the name of the unigram file.
+//   line 4: the name of the bigram file.
+//   line 5: the name of the trigram file.
+//   line 6: the name of the ciphertext file.
+//   Current profiles also have a seventh line that gives the
+//   location of the plaintext file, which can be used for setup and evaluation
+//   purposes.  It won't be read by this program, though.
+//
+// Note: this program returns a set of stats for each run of the viterbi algorithm, and
+//       also the final solution, number of runs per solution size, and the total running time.
+//
+// e.g., the final lines are of the format:
+// 
+//Time taken for process: 56:52:38
+//
+//  Solution: {0:0,1:1,2:3,3:4,4:5,5:6,6:7,7:8,8:9,9:10,10:11,11:12,12:13,13:14,14:15,15:16,16:17,17:18,18:19,19:20,20:21,21:22,22:23,23:24,24:25,25:26,26:27,27:2}
+//
+//  Solution sizes: {1:1,2:24,3:340,4:938,5:6090,6:27485,7:13285,8:19922,9:10783,10:6764,11:3143,12:202,13:15,14:4,15:1,16:4,17:3,18:2,19:1,20:1,21:1,22:1,23:1,24:1,25:1,26:1,27:1,28:1}
+// 
+// (this was a large run.)
+//
+// while the information given in a particular run of the algorithm is of the fromat:
+//
+//Starting Viterbi Algorithm: 
+//
+//  Queue size: 418
+//
+//  Solution size: 3
+//
+//  Number of passes: 61
+//
+//  Solution sizes: {1:1,2:24,3:340,4:113}
+// 
+// Information on the number of zeroed solutions can be obtained by looking at the information given in the different runs of the algorithm.
+// Correctness of the solution is not checked by this algorithm.
+// Both of these jobs are done by simple python scripts that were not given by the original author.
 
 int main(int argc, char * argv[]){
 
@@ -364,12 +487,24 @@ int main(int argc, char * argv[]){
   // make sure that the calling procedure is correct.
   if (argc != 2){
     printf("\nUsage: ");
-    printf("\t<insert usage description here>\n\n");
+    printf("\t./decoder <profile>\n\n");
     exit(0);
   }
 
   /* read profile */
   ifstream f_profile(argv[1]);
+
+  // Lines from the profile.
+  // profiles have the format:
+  // line 1: all ciphertext letters, seperated by spaces.
+  // line 2: all plaintext letters, seperated by spaces.
+  // line 3: the name of the unigram file.
+  // line 4: the name of the bigram file.
+  // line 5: the name of the trigram file.
+  // line 6: the name of the ciphertext file.
+  // Current profiles also have a seventh line that gives the
+  // location of the plaintext file, which can be used for setup and evaluation
+  // purposes.  It won't be read by this program, though.
 
   string cipher_line;
   string plain_line;
@@ -387,7 +522,12 @@ int main(int argc, char * argv[]){
   
   f_profile.close();
 
-  /*Use the cipher and plaintext lines to create the corresponding lists:*/
+  // We don't know the sizes of the alphabets beforehand, so we're reading them into 
+  // vectors.  Recall that they're only being used for setup: in the actual algorithm, 
+  // we'll only use numbers.
+  //
+  // Use the cipher and plaintext lines to create the corresponding lists:
+
   for(i = 0; i < cipher_line.size(); i++){
     if(cipher_line[i] != ' '){
       cipher_alpha.push_back(cipher_line[i]);
@@ -406,15 +546,13 @@ int main(int argc, char * argv[]){
   for(i = 0; i < plain_num; i++){
     inv_plain[plain_alpha[i]] = i;
   }
-  
-  // Create the greenhouse array.
-  greenhouse = (double *) malloc(plain_num * plain_num * cipher_num * 3 * sizeof(double));
-  backpointers = (int *) malloc(plain_num * plain_num * cipher_num * 3 * sizeof(int));
 
-  /*Read the unigrams, bigrams, and trigrams*/
+  // Read the unigrams, bigrams, and trigrams
+
   // for the unigrams, read each line, process it into its parts,
   // and add each entry into a unigram map.
-  // unigram is array such that index for i = base(bigram) + i
+  // The basic map has size plain_num, with a default entry of -1.
+  // unigram is an array whose ith index is *(unigram + i)
   unigram = (double *) malloc(plain_num * sizeof(double));
   for(i = 0; i < plain_num; i++){
     *(unigram + i) = -1;
@@ -443,7 +581,7 @@ int main(int argc, char * argv[]){
     uni_total += uni_prob;
   }
   for(i = 0; i < plain_num; i++){
-     if(*(unigram + i) != -1){
+     if((*(unigram + i) != -1) && isfinite(*(unigram + i))){
        *(unigram + i) += log(uni_total);
      } else {
        *(unigram + i) = -1;
@@ -451,10 +589,13 @@ int main(int argc, char * argv[]){
   }
   unigrams_file.close();
 
-  // for the bigrams, read each line, process it into its parts,
-  // and add each entry into a unigram map of maps, adding intermediate
-  // entries where needed.
-  // bigram is array such that index for ij = base(bigram) + plain_num * i + j
+  // Read the bigram file.
+  // This is an array of size plain_num^2, with default values -1.
+  // the index for i following j is *(bigram + plain_num * j + i).
+
+  // add each entry into a unigram map of maps, adding intermediate
+  // entries where needed.  // TODO: Probably outdated comment
+
   int p_2 = plain_num * plain_num;
   bigram = (double *) malloc(p_2 * sizeof(double));
   for(i = 0; i < p_2; i++){
@@ -489,8 +630,8 @@ int main(int argc, char * argv[]){
     bi_total += bi_prob;
   }
   for(i = 0; i < p_2; i++){
-     if(*(bigram + i) != -1){
-       *(bigram + i) += log(bi_total);
+     if((*(bigram + i) != -1) && isfinite(*(unigram + i))){
+       // *(bigram + i) += log(bi_total);  // TODO: shouldn't normalize like this, lets not normalize to keep fairness
      } else {
        *(bigram + i) = -1;
      }
@@ -498,10 +639,11 @@ int main(int argc, char * argv[]){
   bigrams_file.close();
   
   threshold = 0;  
-  // for the trigrams, read each line, process it into its parts,
-  // and add each entry into a unigram map of maps, adding intermediate
-  // entries where needed.
-  // trigram is array such that index for ijk = base(bigram) + plain_num^2 * i + j * plain_num + k
+
+  // Read the trigram file.
+  // This is an array of size plain_num^3, with default values -1.
+  // the index for i following j following k is *(trigram + plain_num * (plain_num * k + j) + i).
+
   int p_3 = plain_num * plain_num * plain_num;
   trigram = (double *) malloc(p_3 * sizeof(double));
   for(i = 0; i < p_3; i++){
@@ -542,8 +684,8 @@ int main(int argc, char * argv[]){
     tri_total += tri_prob;
   }
   for(i = 0; i < p_3; i++){
-     if(*(trigram + i) != -1){
-       *(trigram + i) += log(tri_total);
+     if((*(trigram + i) != -1) && isfinite(*(unigram + i))){
+       // *(trigram + i) += log(tri_total);  // TODO: shouldn't normalize like this, lets not normalize to keep fairness
        threshold = fmax(threshold, *(trigram + i));
      } else {
        *(trigram + i) = -1;
@@ -551,7 +693,10 @@ int main(int argc, char * argv[]){
   }
   trigrams_file.close();
 
-  /* Create the cipher string*/
+  // Create the cipher string.
+  // Recall that we're going to turn everything into numbers, and first read everything into a vector,
+  // then transfer the vector to an array.
+
   ifstream cipher_file(cipher_name.c_str());
   while( getline(cipher_file, temp, '\n')){
     for(i = 0; i < temp.size(); i++){
@@ -568,6 +713,9 @@ int main(int argc, char * argv[]){
   cipher_file.close();
 
   // get the locations of the last characters in the cipher.
+  // This will be used to determine the order in which letters are 
+  // added to the solution.
+
   int num_last = 0;
   map<int, int> last;
   map<int, int> lastcount;
@@ -580,6 +728,10 @@ int main(int argc, char * argv[]){
       num_last++;
     }
   }
+
+  // Create the greenhouse array.
+  greenhouse = (double *) malloc(plain_num * plain_num * cipher_num * 3 * sizeof(double));
+  backpointers = (int *) malloc(plain_num * plain_num * cipher_num * 3 * sizeof(int));
   
 // This part sets the array LM_uni_sorted to give the order of the most frequent letters in the LM (i.e., the most frequent at LM_uni_sorted[0]).
 // It'll be used to change the order in which letters are processed in the viterbi algorithm: algorithmically, it's the same, since everything is parallel, 
@@ -660,16 +812,26 @@ int main(int argc, char * argv[]){
   // set up a map of sizes
   double * result = (double *) malloc((plain_num * cipher_num) * sizeof(double));
   map<int, int> start_soln;
+
+  // Set up a starting solution and add it to the heap.
+
+  // Normally, the solution is empty. here.
+  // The following line adds the restriction that spaces map to spaces
+  // to the solution (the ciphers we're using always end in a space).
   // In english, spaces are easy to find, so we can set them here.  We'll try to avoid it, though.
   // (to set the spaces, just uncomment here, and set all of the codes in the test to space -> space)
   start_soln[0] = 0;
 
   map<int, int> soln_sizes;
   soln_sizes[start_soln.size()] = 1;
-  long pass_num = 0;
+  long pass_num = 0;  // TODO: the CUDA version initializes to 1 here
   int * letter_order = (int *) malloc(cipher_num * sizeof(int));
 
+  // A boolean variable that will tell us when we're finished looking for the solution.
+
   bool found = false;
+
+  // prime the priority queue with the first solution.
 
   int l, b, k;
 
@@ -681,9 +843,14 @@ int main(int argc, char * argv[]){
     full_curr_soln[i] = 0;
   }
   aStar.push(pair<double, pair<map<int, int>, vector<double> > >(-1, pair<map<int, int>, vector<double> >(start_soln, full_curr_soln ) ) );
-  // while the priority heap is not empty and while the solution size
-  // is less than the plaintext size:
+
+  // The main part of the program: pop solutions and run the genviterbi algorithm to grow solutions until
+  // the final solution is found.
+
   while(!(aStar.empty()) && !found){
+
+    // pop the best solution, and set up the next run.
+
     map<int, int> curr_soln = aStar.top().second.first;
     full_curr_soln = aStar.top().second.second;
     double curr_soln_prob = aStar.top().first;
@@ -716,6 +883,10 @@ int main(int argc, char * argv[]){
     soln_string.replace(0, 1, "{");
     soln_string += "}";
     cout << "  Solution sizes: " << soln_string << "\n" << endl;
+
+    // Check to see if we're done (the solution is large enough to cover all ciphertext letters).
+    // If so, set the solution to the current solution and exit the loop.
+    // Otherwise, find the next letter to be added.
 
     if(curr_soln.size() >= cipher_num){
       found = true;
@@ -848,7 +1019,11 @@ int main(int argc, char * argv[]){
         }
       }
 
-      // Create and apply the next solutions.
+
+    // Check to see if we're done (the solution is large enough to cover all ciphertext letters).
+    // If so, set the solution to the current solution and exit the loop.
+    // Otherwise, find the next letter to be added.
+
       for(l = 0; l < plain_num; l++){
         if(*(result + curr_endpoint * plain_num + l) >= 0){
           map<int, int> next_soln;
@@ -856,7 +1031,6 @@ int main(int argc, char * argv[]){
           for(curr_iter = curr_soln.begin(); curr_iter != curr_soln.end(); ++curr_iter){
             next_soln[curr_iter->first] = curr_iter->second;
           }
-
           next_soln[l] = curr_endpoint;
           double next_prob = *(result + curr_endpoint * plain_num + l);
           if(next_prob > 0){
@@ -877,7 +1051,6 @@ int main(int argc, char * argv[]){
     }
 
   } 
-    // put the valid ones on the heap.
 
   // return the results.
 
@@ -919,3 +1092,5 @@ int main(int argc, char * argv[]){
   free(cipher_string);
   return 0;
 }
+
+/* -------------------------------- End Main------------------------------------------------ */
