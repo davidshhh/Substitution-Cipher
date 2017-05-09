@@ -834,7 +834,7 @@ int main(int argc, char * argv[]){
     bi_total += bi_prob;
   }
   for(i = 0; i < p_2; i++){
-     if((*(bigram + i) != -1) && isfinite(*(unigram + i))){
+     if((*(bigram + i) != -1) && isfinite(*(bigram + i))){
        // *(bigram + i) += log(bi_total);  // TODO: shouldn't normalize like this, lets not normalize to keep fairness
      } else {
        *(bigram + i) = -1;
@@ -886,7 +886,7 @@ int main(int argc, char * argv[]){
     tri_total += tri_prob;
   }
   for(i = 0; i < p_3; i++){
-     if((*(trigram + i) != -1) && isfinite(*(unigram + i))){
+     if((*(trigram + i) != -1) && isfinite(*(trigram + i))){
        // *(trigram + i) += log(tri_total);  // TODO: shouldn't normalize like this, lets not normalize to keep fairness
      } else {
        *(trigram + i) = -1;
