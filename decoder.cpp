@@ -419,6 +419,152 @@ void genviterbi(int len, int plain_num, int cipher_num, int * part_soln, int * c
   free(part_inv);
 }
 
+
+void readchrmodel(
+  double *unigram, double *bigram, double *trigram,
+  string unigram_name, string bigram_name, string trigram_name,
+  int plain_num, int p_2, int p_3
+) {
+
+  // loop variable.
+  int i;
+
+  // for the unigrams, read each line, process it into its parts,
+  // and add each entry into a unigram map.
+  // The basic map has size plain_num, with a default entry of -1.
+  // unigram is an array whose ith index is *(unigram + i)
+
+  for(i = 0; i < plain_num; i++){
+    *(unigram + i) = -1;
+  }
+  ifstream unigrams_file(unigram_name.c_str());
+  string temp;
+  double uni_total = 0;
+  while(getline(unigrams_file, temp, '\n')){
+    char char_1;
+    i = 0;
+    while((temp[i] == ' ') || (temp[i] == '\t')){
+      i++;
+    }
+    char_1 = temp[i];
+    i++;
+    while((temp[i] == ' ') || (temp[i] == '\t')){
+      i++;
+    }
+    string str = "";
+    while((temp[i] != ' ') && (temp[i] != '\t')){
+      str.push_back(temp[i]);
+      i++;
+    }
+    double uni_prob = atof(str.c_str());
+    *(unigram + inv_plain[char_1]) = -1 * log(uni_prob);
+    uni_total += uni_prob;
+  }
+  for(i = 0; i < plain_num; i++){
+     if((*(unigram + i) != -1) && isfinite(*(unigram + i))){
+       *(unigram + i) += log(uni_total);
+     } else {
+       *(unigram + i) = -1;
+     }
+  }
+  unigrams_file.close();
+
+  // Read the bigram file.
+  // This is an array of size plain_num^2, with default values -1.
+  // the index for i following j is *(bigram + plain_num * j + i).
+  for(i = 0; i < p_2; i++){
+    *(bigram + i) = -1;
+  }
+  ifstream bigrams_file(bigram_name.c_str());
+  double bi_total = 0;
+  while(getline(bigrams_file, temp, '\n')){
+    char char_1;
+    char char_2;
+    i = 0;
+    while((temp[i] == ' ') || (temp[i] == '\t')){
+      i++;
+    }
+    char_1 = temp[i];
+    i++;
+    while((temp[i] == ' ') || (temp[i] == '\t')){
+      i++;
+    }
+    char_2 = temp[i];
+    i++;
+    while((temp[i] == ' ') || (temp[i] == '\t')){
+      i++;
+    }
+    string str = "";
+    while((temp[i] != ' ') && (temp[i] != '\t')){
+      str.push_back(temp[i]);
+      i++;
+    }
+    double bi_prob = atof(str.c_str());
+    *(bigram + inv_plain[char_2] + (inv_plain[char_1] * plain_num)) = -1 * log(bi_prob);
+    bi_total += bi_prob;
+  }
+  for(i = 0; i < p_2; i++){
+     if((*(bigram + i) != -1) && isfinite(*(bigram + i))){
+       // TODO: I think it shouldn't normalize like this, but experiments showed better results with this
+       *(bigram + i) += log(bi_total);
+     } else {
+       *(bigram + i) = -1;
+     }
+  }
+  bigrams_file.close();
+
+  // Read the trigram file.
+  // This is an array of size plain_num^3, with default values -1.
+  // the index for i following j following k is *(trigram + plain_num * (plain_num * k + j) + i).
+
+  for(i = 0; i < p_3; i++){
+    *(trigram + i) = -1;
+  }
+  ifstream trigrams_file(trigram_name.c_str());
+  double tri_total = 0;
+  while(getline(trigrams_file, temp, '\n')){
+    char char_1;
+    char char_2;
+    char char_3;
+    i = 0;
+    while((temp[i] == ' ') || (temp[i] == '\t')){
+      i++;
+    }
+    char_1 = temp[i];
+    i++;
+    while((temp[i] == ' ') || (temp[i] == '\t')){
+      i++;
+    }
+    char_2 = temp[i];
+    i++;
+    while((temp[i] == ' ') || (temp[i] == '\t')){
+      i++;
+    }
+    char_3 = temp[i];
+    i++;
+    while((temp[i] == ' ') || (temp[i] == '\t')){
+      i++;
+    }
+    string str = "";
+    while((temp[i] != ' ') && (temp[i] != '\t')){
+      str.push_back(temp[i]);
+      i++;
+    }
+    double tri_prob = atof(str.c_str());
+    *(trigram + inv_plain[char_3] + (inv_plain[char_2] * plain_num) + (inv_plain[char_1] * p_2)) = -1 * log(tri_prob);
+    tri_total += tri_prob;
+  }
+  for(i = 0; i < p_3; i++){
+     if((*(trigram + i) != -1) && isfinite(*(trigram + i))){
+       // TODO: I think it shouldn't normalize like this, but experiments showed better results with this
+       *(trigram + i) += log(tri_total);
+     } else {
+       *(trigram + i) = -1;
+     }
+  }
+  trigrams_file.close();
+}
+
 /* ---------------------------- End General Functions -------------------------------------- */
 
 
@@ -480,6 +626,10 @@ int main(int argc, char * argv[]){
   // A generic loop variable.
 
   int i;
+
+  // Generic temp string.
+  string temp;
+
   double uselessvariableoriginallynamedthreshold;
 
   // make sure that the calling procedure is correct.
@@ -548,148 +698,12 @@ int main(int argc, char * argv[]){
 
   // Read the unigrams, bigrams, and trigrams
 
-  // for the unigrams, read each line, process it into its parts,
-  // and add each entry into a unigram map.
-  // The basic map has size plain_num, with a default entry of -1.
-  // unigram is an array whose ith index is *(unigram + i)
-
   unigram = (double *) malloc(plain_num * sizeof(double));
-  for(i = 0; i < plain_num; i++){
-    *(unigram + i) = -1;
-  }
-  ifstream unigrams_file(unigram_name.c_str());
-  string temp;
-  double uni_total = 0;
-  while(getline(unigrams_file, temp, '\n')){
-    char char_1;
-    i = 0;
-    while((temp[i] == ' ') || (temp[i] == '\t')){
-      i++;
-    }
-    char_1 = temp[i];
-    i++;
-    while((temp[i] == ' ') || (temp[i] == '\t')){
-      i++;
-    }
-    string str = "";
-    while((temp[i] != ' ') && (temp[i] != '\t')){
-      str.push_back(temp[i]);
-      i++;
-    }
-    double uni_prob = atof(str.c_str());
-    *(unigram + inv_plain[char_1]) = -1 * log(uni_prob);
-    uni_total += uni_prob;
-  }
-  for(i = 0; i < plain_num; i++){
-     if((*(unigram + i) != -1) && isfinite(*(unigram + i))){
-       *(unigram + i) += log(uni_total);
-     } else {
-       *(unigram + i) = -1;
-     }
-  }
-  unigrams_file.close();
-
-  // Read the bigram file.
-  // This is an array of size plain_num^2, with default values -1.
-  // the index for i following j is *(bigram + plain_num * j + i).
-
   int p_2 = plain_num * plain_num;
   bigram = (double *) malloc(p_2 * sizeof(double));
-  for(i = 0; i < p_2; i++){
-    *(bigram + i) = -1;
-  }
-  ifstream bigrams_file(bigram_name.c_str());
-  double bi_total = 0;
-  while(getline(bigrams_file, temp, '\n')){
-    char char_1;
-    char char_2;
-    i = 0;
-    while((temp[i] == ' ') || (temp[i] == '\t')){
-      i++;
-    }
-    char_1 = temp[i];
-    i++;
-    while((temp[i] == ' ') || (temp[i] == '\t')){
-      i++;
-    }
-    char_2 = temp[i];
-    i++;
-    while((temp[i] == ' ') || (temp[i] == '\t')){
-      i++;
-    }
-    string str = "";
-    while((temp[i] != ' ') && (temp[i] != '\t')){
-      str.push_back(temp[i]);
-      i++;
-    }
-    double bi_prob = atof(str.c_str());
-    *(bigram + inv_plain[char_2] + (inv_plain[char_1] * plain_num)) = -1 * log(bi_prob);
-    bi_total += bi_prob;
-  }
-  for(i = 0; i < p_2; i++){
-     if((*(bigram + i) != -1) && isfinite(*(bigram + i))){
-       // TODO: I think it shouldn't normalize like this, but experiments showed better results with this
-       *(bigram + i) += log(bi_total);
-     } else {
-       *(bigram + i) = -1;
-     }
-  }
-  bigrams_file.close();
-
-  uselessvariableoriginallynamedthreshold = 0;
-
-  // Read the trigram file.
-  // This is an array of size plain_num^3, with default values -1.
-  // the index for i following j following k is *(trigram + plain_num * (plain_num * k + j) + i).
-
   int p_3 = plain_num * plain_num * plain_num;
   trigram = (double *) malloc(p_3 * sizeof(double));
-  for(i = 0; i < p_3; i++){
-    *(trigram + i) = -1;
-  }
-  ifstream trigrams_file(trigram_name.c_str());
-  double tri_total = 0;
-  while(getline(trigrams_file, temp, '\n')){
-    char char_1;
-    char char_2;
-    char char_3;
-    i = 0;
-    while((temp[i] == ' ') || (temp[i] == '\t')){
-      i++;
-    }
-    char_1 = temp[i];
-    i++;
-    while((temp[i] == ' ') || (temp[i] == '\t')){
-      i++;
-    }
-    char_2 = temp[i];
-    i++;
-    while((temp[i] == ' ') || (temp[i] == '\t')){
-      i++;
-    }
-    char_3 = temp[i];
-    i++;
-    while((temp[i] == ' ') || (temp[i] == '\t')){
-      i++;
-    }
-    string str = "";
-    while((temp[i] != ' ') && (temp[i] != '\t')){
-      str.push_back(temp[i]);
-      i++;
-    }
-    double tri_prob = atof(str.c_str());
-    *(trigram + inv_plain[char_3] + (inv_plain[char_2] * plain_num) + (inv_plain[char_1] * p_2)) = -1 * log(tri_prob);
-    tri_total += tri_prob;
-  }
-  for(i = 0; i < p_3; i++){
-     if((*(trigram + i) != -1) && isfinite(*(trigram + i))){
-       // TODO: I think it shouldn't normalize like this, but experiments showed better results with this
-       *(trigram + i) += log(tri_total);
-     } else {
-       *(trigram + i) = -1;
-     }
-  }
-  trigrams_file.close();
+  readchrmodel(unigram, bigram, trigram, unigram_name, bigram_name, trigram_name, plain_num, p_2, p_3);
 
   // Create the cipher string.
   // Recall that we're going to turn everything into numbers, and first read everything into a vector,
