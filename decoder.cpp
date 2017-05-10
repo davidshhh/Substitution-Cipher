@@ -443,7 +443,7 @@ string GetPattern(int *cipher_string, int i, int j) {
 }
 
 
-void readchrmodel(
+void ReadChrModel(
   double *unigram, double *bigram, double *trigram,
   string unigram_name, string bigram_name, string trigram_name,
   int p_2, int p_3
@@ -801,7 +801,7 @@ int main(int argc, char * argv[]){
   bigram = (double *) malloc(p_2 * sizeof(double));
   int p_3 = plain_num * plain_num * plain_num;
   trigram = (double *) malloc(p_3 * sizeof(double));
-  readchrmodel(unigram, bigram, trigram, unigram_name, bigram_name, trigram_name, p_2, p_3);
+  ReadChrModel(unigram, bigram, trigram, unigram_name, bigram_name, trigram_name, p_2, p_3);
 
   // Create the cipher string.
   // Recall that we're going to turn everything into numbers, and first read everything into a vector,
