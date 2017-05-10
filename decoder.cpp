@@ -118,7 +118,7 @@ public:
 //     decide which branch to use is mininmized.
 //
 // Parameters:
-//   -b: The next ciphertext letter to be fixed.
+//   Obsolete: -b: The next ciphertext letter to be fixed. CPP: useless variable passed in as endpoint
 //   -plain_num: the number of plaintext letters.
 //   -cipher_num: the number of ciphertext letters.
 //   -part_soln: an array holding the current guess of the partial solution.  It always holds
@@ -143,7 +143,7 @@ public:
 // Returns: Nothing, but alters the results array in place.
 // TODO: This documentation is from the CUDA version decoder.cu, we may want to re-read the code if we use this function.
 
-void genviterbi(int len, int plain_num, int cipher_num, int * part_soln, int * cipher_string, long cipher_length, double * result, double * unigram, double * bigram, double * trigram, double * greenhouse, int * backpointers, double uselessvariableoriginallynamedthreshold){
+void genviterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_string, long cipher_length, double * result, double * unigram, double * bigram, double * trigram, double * greenhouse, int * backpointers, double uselessvariableoriginallynamedthreshold){
 
   // loop variables
   //   -i: the index of the column of the greenhouse and backpointer tables that are being filled.
@@ -157,10 +157,6 @@ void genviterbi(int len, int plain_num, int cipher_num, int * part_soln, int * c
   int c;
   int c1;
   int c2;
-  
-  // The value of the ciphertext at the endpoint of the code.
-  int c_1 = len;
-
 
   // This part will create a reverse map.
   int * part_inv = (int *) malloc(cipher_num*sizeof(int));
@@ -230,7 +226,6 @@ void genviterbi(int len, int plain_num, int cipher_num, int * part_soln, int * c
   c = *(cipher_string + 2);
   c1 = *(cipher_string + 1);
   c2 = *(cipher_string);
-  b = c_1;
   for(l = 0; l < plain_num; l++){ // for: index l
      for(b = 0; b < cipher_num + 1; b++){ // for: index b
       for(k = 0; k < plain_num; k++){ // for: index k
@@ -859,6 +854,7 @@ int main(int argc, char * argv[]){
   soln_sizes[start_soln.size()] = 1;
   long pass_num = 0;  // TODO: the CUDA version initializes to 1 here
   int * letter_order = (int *) malloc(cipher_num * sizeof(int));
+  int curr_endpoint; // current cipher letter we are interested in fixing
 
   // A boolean variable that will tell us when we're finished looking for the solution.
 
@@ -896,7 +892,7 @@ int main(int argc, char * argv[]){
     }
     for(i = 0; i < plain_num * cipher_num; i++){
       *(curr_soln_arr + plain_num + i) = full_curr_soln[i];
-    }
+    } // curr_soln_arr is curr_soln(map) concatenated by full_curr_soln(vector)
     aStar.pop();
 
     // print some stats.
@@ -925,23 +921,27 @@ int main(int argc, char * argv[]){
       found = true;
       start_soln = curr_soln;
     } else {
-      // Uncomment the preferred order for adding solutions.
-      // If using the most constrained first setting, uncomment the last first and loop lines.
-      // ********** last first ********** //
-      int curr_endpoint = *(cipher_string + lastcount[curr_soln.size()]);
-      // ********** max freq ********** //
-      //int curr_endpoint = *(cipher_uni_inv + curr_soln.size());
-      // ********** min freq ********** //
-      //int curr_endpoint = *(cipher_uni_inv + ((cipher_num-curr_soln.size()) % cipher_num));
 
       for(i = 0; i < plain_num * cipher_num; i++){    
           *(result + i) = full_curr_soln[i];
       }
 
-      // use the gen_viterbi algorithm to grow larger solutions.
-      genviterbi(curr_endpoint, plain_num, cipher_num, curr_soln_arr, cipher_string, cipher_length, result, unigram, bigram, trigram, greenhouse, backpointers, uselessvariableoriginallynamedthreshold);
-
+      // Pre-process at the first iteration using Corlett's method.
       if(pass_num == 1){
+        // Uncomment the preferred order for adding solutions.
+        // If using the most constrained first setting, uncomment the last first and loop lines.
+        // ********** last first ********** //
+        curr_endpoint = *(cipher_string + lastcount[curr_soln.size()]);
+        // ********** max freq ********** //
+        // curr_endpoint = *(cipher_uni_inv + curr_soln.size());
+        // ********** min freq ********** //
+        // curr_endpoint = *(cipher_uni_inv + ((cipher_num-curr_soln.size()) % cipher_num));
+
+        // use the gen_viterbi algorithm
+        // only in the first iteration to find most constrained order.
+        // and its pruned search space is kept to be used as a start point.
+        genviterbi(plain_num, cipher_num, curr_soln_arr, cipher_string, cipher_length, result, unigram, bigram, trigram, greenhouse, backpointers, uselessvariableoriginallynamedthreshold);
+
         // order the solutions.
 
         // ********** Last First ********** //
@@ -982,7 +982,11 @@ int main(int argc, char * argv[]){
             numconstrained[most_constrained_index] = -1;
           }
       }
+
       curr_endpoint = *(letter_order + curr_soln.size());
+
+      // use the gen_viterbi algorithm to grow larger solutions.  // TODO: Change to ours
+      genviterbi(plain_num, cipher_num, curr_soln_arr, cipher_string, cipher_length, result, unigram, bigram, trigram, greenhouse, backpointers, uselessvariableoriginallynamedthreshold);
 
       // About here, put in a filtering algorithm for the partial solutions.
         // (1) a. For each remaining cipher letter, find the possible plaintext letters.
