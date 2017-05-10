@@ -423,7 +423,7 @@ void genviterbi(int len, int plain_num, int cipher_num, int * part_soln, int * c
 void readchrmodel(
   double *unigram, double *bigram, double *trigram,
   string unigram_name, string bigram_name, string trigram_name,
-  int plain_num, int p_2, int p_3
+  int p_2, int p_3
 ) {
 
   // loop variable.
@@ -703,7 +703,7 @@ int main(int argc, char * argv[]){
   bigram = (double *) malloc(p_2 * sizeof(double));
   int p_3 = plain_num * plain_num * plain_num;
   trigram = (double *) malloc(p_3 * sizeof(double));
-  readchrmodel(unigram, bigram, trigram, unigram_name, bigram_name, trigram_name, plain_num, p_2, p_3);
+  readchrmodel(unigram, bigram, trigram, unigram_name, bigram_name, trigram_name, p_2, p_3);
 
   // Create the cipher string.
   // Recall that we're going to turn everything into numbers, and first read everything into a vector,
@@ -827,13 +827,14 @@ int main(int argc, char * argv[]){
       found = true;
       start_soln = curr_soln;
     } else {
-      // Uncomment the preferred order for adding solutions.  If using the most constrained first setting, uncomment the last first and loop lines.
+      // Uncomment the preferred order for adding solutions.
+      // If using the most constrained first setting, uncomment the last first and loop lines.
       // ********** last first ********** //
       int curr_endpoint = *(cipher_string + lastcount[curr_soln.size()]);
       // ********** max freq ********** //
-      //int curr_endpoint = *(cipher_uni_inv + curr_soln.size());  
+      //int curr_endpoint = *(cipher_uni_inv + curr_soln.size());
       // ********** min freq ********** //
-      //int curr_endpoint = *(cipher_uni_inv + ((cipher_num-curr_soln.size()) % cipher_num)); 
+      //int curr_endpoint = *(cipher_uni_inv + ((cipher_num-curr_soln.size()) % cipher_num));
 
       for(i = 0; i < plain_num * cipher_num; i++){    
           *(result + i) = full_curr_soln[i];
@@ -906,8 +907,8 @@ int main(int argc, char * argv[]){
       while(!finished){
         finished = 1;
         for(i = 0; i < cipher_num; i++){
-
-          // for each cipher letter, find the constraints.
+          // for each cipher letter
+          // find the constraints.
           constraint_count = 0;
           for(l = 0; l < plain_num; l++){
             if(*(result + i * plain_num + l) >= 0){
@@ -933,14 +934,14 @@ int main(int argc, char * argv[]){
           }
 
           // If the number of matches is high enough, change the rest of the table.
-         if(match_count >= 0){
-           for(i7 = 0; i7 < cipher_num; i7++){
-             diff = 0;
-             for(l = 0; l < plain_num; l++){
-               if((constraints[l] == 0) && (*(result + i7 * plain_num + l) >= 0)){
-                 diff = 1;
-               }
-             }
+          if(match_count >= 0){
+            for(i7 = 0; i7 < cipher_num; i7++){
+              diff = 0;
+              for(l = 0; l < plain_num; l++){
+                if((constraints[l] == 0) && (*(result + i7 * plain_num + l) >= 0)){
+                  diff = 1;
+                }
+              }
               if(diff == 1){
                 for(l = 0; l < plain_num; l++){
                   if((constraints[l] > 0) && (*(result + i7 * plain_num + l) >= 0)){
@@ -950,14 +951,14 @@ int main(int argc, char * argv[]){
                 }
               }
             }
-          }
-        }
-      }
+          } // if(match_count >= 0)
 
+          // done for each cipher letter
+        } // for(i = 0; i < cipher_num; i++)
+      } // while(!finished)
 
-    // Check to see if we're done (the solution is large enough to cover all ciphertext letters).
-    // If so, set the solution to the current solution and exit the loop.
-    // Otherwise, find the next letter to be added.
+      // For each possible extension to the solution, format the next partial solution
+      // and add it to the heap.
 
       for(l = 0; l < plain_num; l++){
         if(*(result + curr_endpoint * plain_num + l) >= 0){
@@ -974,13 +975,11 @@ int main(int argc, char * argv[]){
               temp_full[i] = *(result + i);
             }
             aStar.push(pair<double, pair<map<int, int>, vector<double> > >(next_prob, pair<map<int, int>, vector<double> >(next_soln, temp_full ) ) );
-            int size_count = 1;
             if(soln_sizes.count(curr_soln.size() + 1) > 0){
-              size_count = soln_sizes[curr_soln.size() + 1] + 1;
-            }
-            soln_sizes[curr_soln.size() + 1] = size_count;
-            // TODO: Why not write normally?
-            // if(soln_sizes.count(curr_soln.size() + 1) > 0){+=1} else =1
+              soln_sizes[curr_soln.size() + 1] += 1;
+            } else {
+              soln_sizes[curr_soln.size() + 1] = 1;
+            };
           }
         }
       }
