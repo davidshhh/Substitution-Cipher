@@ -130,6 +130,7 @@ public:
 //   -cipher_length: the length of the cipher.
 //   -result: an array of length plain_num giving, for each plaintext letter, the best possible probability
 //            of a path that assigns that plaintext letter to b, the next ciphertext letter to be fixed.
+//            CPP: an array of length plain_num*cipher_number, for each ciphertext, an (sub)array as described above.
 //    This is basically an array to be changed in place for the return values.
 //   -(uni|bi|tri)gram: CUDA arrays representing the unigrams, bigrams, and trigrams.
 //   -greenhouse, backpointers: CUDA arrays holding the greenhouse table and the associated backpointers.
@@ -158,7 +159,7 @@ void genviterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_str
   int c1;
   int c2;
 
-  // This part will create a reverse map.
+  // This part will create a reverse map (inverse partial solution).
   int * part_inv = (int *) malloc(cipher_num*sizeof(int));
   for(l = 0; l < cipher_num; l++){
     *(part_inv + l) = -1;
@@ -435,6 +436,62 @@ string GetPattern(int *cipher_string, int i, int j) {
       pattern.push_back(char(dict[cipher_char] + 'a'));
     }
    return pattern;
+}
+
+
+void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_string, long cipher_length, double * result) {
+  int i, l, b;
+  long word_start, word_end;
+
+  // This part will create a reverse map (inverse partial solution).
+  int * part_inv = (int *) malloc(cipher_num*sizeof(int));
+  for(l = 0; l < cipher_num; l++){
+    *(part_inv + l) = -1;
+  }
+  for(l = 0; l < plain_num; l++){
+    if(*(part_soln + l) >= 0){
+      *(part_inv + *(part_soln + l)) = l;
+    }
+  }
+
+  word_start = 0;
+  word_end = 0;
+  // Scan the cipher string word by word and calculate result probabilities gradually
+  while(word_start < cipher_length) {
+    // Find the next space (0)
+    while (*(cipher_string + word_end) != 0) { ++word_end; }
+    if (word_end - word_start <= 0) { continue; }
+
+    string pattern = GetPattern(cipher_string, word_start, word_end);
+    vector<string> words = patlist[pattern];
+    for (i = 0; i < words.size(); ++i) {
+      // Linear search in list from most frequent to least frequent
+      // TODO: Implement for each cipher letter to fix, for each plaintext to assign; consistent with partial solution
+    }
+
+    // Set the start of the new word after space
+    word_start = ++word_end;
+  }
+
+
+  // Find and return the solutions:
+  for(l = 0; l < plain_num * cipher_num; l++){
+    *(result + l) = -1;
+  }
+  for(l = 0; l < plain_num; l++){
+    for(b = 0; b < cipher_num; b++){
+      int j;
+      for(j = 0; j < plain_num; j++){
+        if(*(greenhouse + ((((cipher_length - 1) % 3) * plain_num + l) * cipher_num + b)* plain_num + j) > 0){
+          if(*(result + b * plain_num + j) <= 0){
+            *(result + b * plain_num + j) = *(greenhouse + ((((cipher_length - 1) % 3) * plain_num + l) * cipher_num + b)* plain_num + j);
+          } else {
+            *(result + b * plain_num + j) = fmin(*(result + b * plain_num + j), *(greenhouse + ((((cipher_length - 1) % 3) * plain_num + l) * cipher_num + b)* plain_num + j));
+          }
+        }
+      }
+    }
+  }
 }
 
 
@@ -986,7 +1043,7 @@ int main(int argc, char * argv[]){
       curr_endpoint = *(letter_order + curr_soln.size());
 
       // use the gen_viterbi algorithm to grow larger solutions.  // TODO: Change to ours
-      genviterbi(plain_num, cipher_num, curr_soln_arr, cipher_string, cipher_length, result, unigram, bigram, trigram, greenhouse, backpointers, uselessvariableoriginallynamedthreshold);
+      WordViterbi(plain_num, cipher_num, curr_soln_arr, cipher_string, cipher_length, result);
 
       // About here, put in a filtering algorithm for the partial solutions.
         // (1) a. For each remaining cipher letter, find the possible plaintext letters.
