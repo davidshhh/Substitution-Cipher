@@ -645,26 +645,6 @@ void ReadPatternList(string pat_name) {
       if (word.length() > 0)
         patlist[pat].push_back(word); // Preserve order
     } while (iss);
-    /*
-    i = 0;
-
-    string pat = "";
-    while((temp[i] == '1') ||(temp[i] == ' ') || (temp[i] == '\t')) { i++; }
-    while((temp[i] != ' ') && (temp[i] != '\t')) {
-      pat.push_back(temp[i]);
-      i++;
-    }
-    patlist[pat];
-    while(i < temp.length()) {
-      string word = "";
-      while((temp[i] == ' ') || (temp[i] == '\t')) { i++; }
-      while((temp[i] != ' ') && (temp[i] != '\t')) {
-        word.push_back(temp[i]);
-        i++;
-      }
-      patlist[pat].push_back(word); // Preserve order
-      cerr << word << endl;
-    }*/
   }
   cerr << " Done." << endl;
 }
