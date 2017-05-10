@@ -51,6 +51,12 @@ double * unigram;
 double * bigram;
 double * trigram;
 
+// Pattern list to map from pattern string "abb" to words "all, odd, ..."
+map<string, vector<string> > patlist;
+
+// Word frequencies.
+map<string, double> word_unigram;
+
 // Maps characters to the integers representations
 
 map<char, int> inv_cipher;
@@ -582,6 +588,45 @@ void readchrmodel(
   trigrams_file.close();
 }
 
+
+void ReadWordFrequencies(string word_unigram_name) {
+
+  // loop variable.
+  int i;
+  map<string, double>::iterator word_iter;
+  string temp;
+
+  double total_prob = 0.0;
+  cerr << "Reading word frequencies...";
+  ifstream word_file(word_unigram_name.c_str());
+  while (getline(word_file, temp, '\n')) {
+    i = 0;
+
+    // Read word
+    string word = "";
+    while((temp[i] == ' ') || (temp[i] == '\t')) { i++; }
+    while((temp[i] != ' ') && (temp[i] != '\t')) {
+      word.push_back(temp[i]);
+      i++;
+    }
+    // Done reading word, now read probability
+    string str = "";
+    while((temp[i] == ' ') || (temp[i] == '\t')) { i++; }
+    while((temp[i] != ' ') && (temp[i] != '\t')) {
+      str.push_back(temp[i]);
+      i++;
+    }
+    double prob = atof(str.c_str());
+    word_unigram[word] = -1 * log(prob);
+    total_prob += prob;
+  }
+  for(word_iter = word_unigram.begin(); word_iter != word_unigram.end(); ++word_iter) {
+    word_iter->second += log(total_prob);
+  }
+  word_file.close();
+  cerr << " Done." << endl;
+}
+
 /* ---------------------------- End General Functions -------------------------------------- */
 
 
@@ -601,10 +646,12 @@ void readchrmodel(
 //   profiles have the format:
 //   line 1: all ciphertext letters, seperated by spaces.
 //   line 2: all plaintext letters, seperated by spaces.
-//   line 3: the name of the unigram file.
-//   line 4: the name of the bigram file.
-//   line 5: the name of the trigram file.
-//   line 6: the name of the ciphertext file.
+  // line 3: the name of the word unigram file.
+  // line 4: the name of the pattern list file.
+  // line 5: the name of the unigram file.
+  // line 6: the name of the bigram file.
+  // line 7: the name of the trigram file.
+  // line 8: the name of the ciphertext file.
 //   Current profiles also have a seventh line that gives the
 //   location of the plaintext file, which can be used for setup and evaluation
 //   purposes.  It won't be read by this program, though.
@@ -664,16 +711,20 @@ int main(int argc, char * argv[]){
   // profiles have the format:
   // line 1: all ciphertext letters, seperated by spaces.
   // line 2: all plaintext letters, seperated by spaces.
-  // line 3: the name of the unigram file.
-  // line 4: the name of the bigram file.
-  // line 5: the name of the trigram file.
-  // line 6: the name of the ciphertext file.
+  // line 3: the name of the word unigram file.
+  // line 4: the name of the pattern list file.
+  // line 5: the name of the unigram file.
+  // line 6: the name of the bigram file.
+  // line 7: the name of the trigram file.
+  // line 8: the name of the ciphertext file.
   // Current profiles also have a seventh line that gives the
   // location of the plaintext file, which can be used for setup and evaluation
   // purposes.  It won't be read by this program, though.
 
   string cipher_line;
   string plain_line;
+  string word_name;
+  string pat_name;
   string unigram_name;
   string bigram_name;
   string trigram_name;
@@ -681,6 +732,8 @@ int main(int argc, char * argv[]){
 
   getline(f_profile, cipher_line, '\n');
   getline(f_profile, plain_line, '\n');
+  getline(f_profile, word_name, '\n');
+  getline(f_profile, pat_name, '\n');
   getline(f_profile, unigram_name, '\n');
   getline(f_profile, bigram_name, '\n');
   getline(f_profile, trigram_name, '\n');
@@ -712,6 +765,9 @@ int main(int argc, char * argv[]){
   for(i = 0; i < plain_num; i++){
     inv_plain[plain_alpha[i]] = i;
   }
+
+  // Read the word frequencies (stored with negative log scale).
+  ReadWordFrequencies(word_name);
 
   // Read the unigrams, bigrams, and trigrams
 
