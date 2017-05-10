@@ -426,18 +426,18 @@ void genviterbi(int len, int plain_num, int cipher_num, int * part_soln, int * c
 }
 
 
-// I like drugs
-string getPattern(int *cipher_string, int i, int j) {
+// Returns a pattern string like "abc" if cipher_string.substring(i,j) is "the"
+string GetPattern(int *cipher_string, int i, int j) {
 
     int count = 0;
-    dict = {}
-    pattern = ""
+    map<char, int> dict;
+    string pattern = "";
 
-    for( int ind = i; i <= j; ind++ ) {
+    for( int ind = i; ind <= j; ind++ ) {
       int cipher_char = *(cipher_string + ind);
-      if cipher_char not in dict:
+      if (dict.count(cipher_char) < 1)
         dict[cipher_char] = count++;
-      pattern += dict[cipher_char]
+      pattern.push_back(char(dict[cipher_char] + 'a'));
     }
    return pattern;
 }
