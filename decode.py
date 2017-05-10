@@ -5,9 +5,11 @@ from pprint import pprint
 def inv_decode(sol, cipher_file):
     inv_sol = {v: k for k, v in sol.iteritems()}
     cf = open(cipher_file, 'r')
+    plain = ''
     for l in cf:
         for c in l:
-            print inv_sol[c],
+            plain += inv_sol[c]
+    print plain
 
 def decode(key, sol, cipher_file):
     # reverse mappping to decode
