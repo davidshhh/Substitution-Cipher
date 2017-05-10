@@ -420,6 +420,23 @@ void genviterbi(int len, int plain_num, int cipher_num, int * part_soln, int * c
 }
 
 
+// I like drugs
+string getPattern(int *cipher_string, int i, int j) {
+
+    int count = 0;
+    dict = {}
+    pattern = ""
+
+    for( int ind = i; i <= j; ind++ ) {
+      int cipher_char = *(cipher_string + ind);
+      if cipher_char not in dict:
+        dict[cipher_char] = count++;
+      pattern += dict[cipher_char]
+    }
+   return pattern;
+}
+
+
 void readchrmodel(
   double *unigram, double *bigram, double *trigram,
   string unigram_name, string bigram_name, string trigram_name,
