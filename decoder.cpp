@@ -627,6 +627,48 @@ void ReadWordFrequencies(string word_unigram_name) {
   cerr << " Done." << endl;
 }
 
+void ReadPatternList(string pat_name) {
+  int i;
+  string temp;
+
+  cerr << "Reading word pattern list...";
+  ifstream pat_file(pat_name.c_str());
+  while (getline(pat_file, temp, '\n')) {
+    istringstream iss(temp);
+    string pat;
+    iss >> pat;
+    iss >> pat;
+    patlist[pat];
+    do {
+      string word;
+      iss >> word;
+      if (word.length() > 0)
+        patlist[pat].push_back(word); // Preserve order
+    } while (iss);
+    /*
+    i = 0;
+
+    string pat = "";
+    while((temp[i] == '1') ||(temp[i] == ' ') || (temp[i] == '\t')) { i++; }
+    while((temp[i] != ' ') && (temp[i] != '\t')) {
+      pat.push_back(temp[i]);
+      i++;
+    }
+    patlist[pat];
+    while(i < temp.length()) {
+      string word = "";
+      while((temp[i] == ' ') || (temp[i] == '\t')) { i++; }
+      while((temp[i] != ' ') && (temp[i] != '\t')) {
+        word.push_back(temp[i]);
+        i++;
+      }
+      patlist[pat].push_back(word); // Preserve order
+      cerr << word << endl;
+    }*/
+  }
+  cerr << " Done." << endl;
+}
+
 /* ---------------------------- End General Functions -------------------------------------- */
 
 
@@ -768,6 +810,9 @@ int main(int argc, char * argv[]){
 
   // Read the word frequencies (stored with negative log scale).
   ReadWordFrequencies(word_name);
+
+  // Read word pattern list.
+  ReadPatternList(pat_name);
 
   // Read the unigrams, bigrams, and trigrams
 
