@@ -137,7 +137,7 @@ public:
 // Returns: Nothing, but alters the results array in place.
 // TODO: This documentation is from the CUDA version decoder.cu, we may want to re-read the code if we use this function.
 
-void genviterbi(int len, int plain_num, int cipher_num, int * part_soln, int * cipher_string, long cipher_length, double * result, double * unigram, double * bigram, double * trigram, double * greenhouse, int * backpointers, double threshold){
+void genviterbi(int len, int plain_num, int cipher_num, int * part_soln, int * cipher_string, long cipher_length, double * result, double * unigram, double * bigram, double * trigram, double * greenhouse, int * backpointers, double uselessvariableoriginallynamedthreshold){
 
   // loop variables
   //   -i: the index of the column of the greenhouse and backpointer tables that are being filled.
@@ -477,13 +477,13 @@ void genviterbi(int len, int plain_num, int cipher_num, int * part_soln, int * c
 
 int main(int argc, char * argv[]){
 
-  int i;
-  double threshold;
+  // A generic loop variable.
 
-  int * LM_uni_sorted;
-  int * cipher_uni_sorted;
+  int i;
+  double uselessvariableoriginallynamedthreshold;
 
   // make sure that the calling procedure is correct.
+
   if (argc != 2){
     printf("\nUsage: ");
     printf("\t./decoder <profile>\n\n");
@@ -592,9 +592,6 @@ int main(int argc, char * argv[]){
   // This is an array of size plain_num^2, with default values -1.
   // the index for i following j is *(bigram + plain_num * j + i).
 
-  // add each entry into a unigram map of maps, adding intermediate
-  // entries where needed.  // TODO: Probably outdated comment
-
   int p_2 = plain_num * plain_num;
   bigram = (double *) malloc(p_2 * sizeof(double));
   for(i = 0; i < p_2; i++){
@@ -638,7 +635,7 @@ int main(int argc, char * argv[]){
   }
   bigrams_file.close();
   
-  threshold = 0;  
+  uselessvariableoriginallynamedthreshold = 0;
 
   // Read the trigram file.
   // This is an array of size plain_num^3, with default values -1.
@@ -687,7 +684,6 @@ int main(int argc, char * argv[]){
      if((*(trigram + i) != -1) && isfinite(*(trigram + i))){
        // TODO: I think it shouldn't normalize like this, but experiments showed better results with this
        *(trigram + i) += log(tri_total);
-       threshold = fmax(threshold, *(trigram + i));
      } else {
        *(trigram + i) = -1;
      }
@@ -720,7 +716,7 @@ int main(int argc, char * argv[]){
   int num_last = 0;
   map<int, int> last;
   map<int, int> lastcount;
-  map<int, int> invlastcount;
+  map<int, int> invlastcount;  // From cipher letter to the position of its order from last
   for(i = cipher_length - 1; i >= 0; i--){
     if(last.count(*(cipher_string + i)) == 0){
       last[*(cipher_string + i)] = i;
@@ -734,87 +730,11 @@ int main(int argc, char * argv[]){
   greenhouse = (double *) malloc(plain_num * plain_num * cipher_num * 3 * sizeof(double));
   backpointers = (int *) malloc(plain_num * plain_num * cipher_num * 3 * sizeof(int));
   
-// This part sets the array LM_uni_sorted to give the order of the most frequent letters in the LM (i.e., the most frequent at LM_uni_sorted[0]).
-// It'll be used to change the order in which letters are processed in the viterbi algorithm: algorithmically, it's the same, since everything is parallel, 
-// but computationally it'll do just a little bit better timewise on CUDE, because of the way the memory calls work: it keeps recent calls in cache, 
-// and this increases the likelihood a bit of repeating a call before it goes out of cache (aat least, it gives better performance, and I think that's what's happening).
-      // Set up the unigram mapping for the LM:
-        double * temp_uni = (double *) malloc(plain_num * sizeof(double));
-        for(i = 0; i < plain_num; i++){
-          *(temp_uni + i) = *(unigram + i);
-        }
-        LM_uni_sorted = (int *) malloc(plain_num * sizeof(int));
-        int best_loc = 0;
-        for(i = 0; i < plain_num; i++){
-          int best = 0;
-          int i2;
-          for(i2 = 0; i2 < plain_num; i2++){
-            if(*(temp_uni + best) < *(temp_uni + i2)){
-              best = i2;
-            }
-          }
-          *(LM_uni_sorted + i) = best;
-          *(temp_uni + best) = -2;
-        }
-      // Set up the unigram model for the cipher:
-        for(i = 0; i < plain_num; i++){
-          if(i < cipher_num){
-            *(temp_uni + i) = 0;
-          } else {
-            *(temp_uni + i) = -2;
-          }
-        }
-        for(i = 0; i < cipher_length; i++){
-          *(temp_uni + *(cipher_string + i)) += 1;
-        }
-        for(i = 0; i < cipher_num; i++){
-          *(temp_uni + i) = *(temp_uni + i) / cipher_length;
-        }
-        cipher_uni_sorted = (int *) malloc(plain_num * sizeof(int));
-        for(i = 0; i < cipher_num; i++){
-          int best = 0;
-          int i2;
-          for(i2 = 0; i2 < cipher_num; i2++){
-            if(*(temp_uni + best) < *(temp_uni + i2)){
-              best = i2;
-            }
-          }
-          *(cipher_uni_sorted + i) = best;
-          *(temp_uni + best) = -2;
-        }
-      // Compare:
-        int *cipher_uni_inv = (int *) malloc(cipher_num * sizeof(int));
-        for(i = 0; i < cipher_num; i++){
-          *(cipher_uni_inv + *(cipher_uni_sorted + i)) = i;
-        }
-        int c_1 = *(LM_uni_sorted + *(cipher_uni_inv + *(cipher_string + 2)));
-        int c_2 = *(LM_uni_sorted + *(cipher_uni_inv + *(cipher_string + 1)));
-        int c_3 = *(LM_uni_sorted + *(cipher_uni_inv + *(cipher_string)));
-        double total = 0;
-        if((*(unigram + c_3) > 0) && (*(bigram + c_2 + plain_num * c_3) > 0) 
-            && (*(trigram + c_1 + plain_num *( c_2 + plain_num * c_3)) > 0)  ){
-          total = *(unigram + c_3) + *(bigram + c_2 + plain_num * c_3) + *(trigram + c_1 + plain_num *( c_2 + plain_num * c_3));
-          for(i = 3; i < cipher_length; i++){
-            c_1 = *(LM_uni_sorted + *(cipher_uni_inv + *(cipher_string + i)));
-            c_2 = *(LM_uni_sorted + *(cipher_uni_inv + *(cipher_string + i - 1)));
-            c_3 = *(LM_uni_sorted + *(cipher_uni_inv + *(cipher_string + i - 2)));
-            if(*(trigram + c_1 + plain_num *( c_2 + plain_num * c_3)) > 0){
-              total += *(trigram + c_1 + plain_num *( c_2 + plain_num * c_3));
-            } else {
-              total += threshold*cipher_length;
-            }
-          }
-          threshold = total;
-        } else {
-          threshold = threshold * cipher_length;
-        }
-
   // set up priority heap
   // set up a map of sizes
+  // Set up a starting solution and add it to the heap.
   double * result = (double *) malloc((plain_num * cipher_num) * sizeof(double));
   map<int, int> start_soln;
-
-  // Set up a starting solution and add it to the heap.
 
   // Normally, the solution is empty. here.
   // The following line adds the restriction that spaces map to spaces
@@ -869,6 +789,8 @@ int main(int argc, char * argv[]){
     }
     aStar.pop();
 
+    // print some stats.
+
     cout << "Starting Viterbi Algorithm: \n" << endl;
     cout << "  Queue size: " << (aStar.size() + 1) << "\n" << endl;
     cout << "  Solution size: " << curr_soln_size << endl;
@@ -906,7 +828,7 @@ int main(int argc, char * argv[]){
       }
 
       // use the gen_viterbi algorithm to grow larger solutions.
-      genviterbi(curr_endpoint, plain_num, cipher_num, curr_soln_arr, cipher_string, cipher_length, result, unigram, bigram, trigram, greenhouse, backpointers, threshold);
+      genviterbi(curr_endpoint, plain_num, cipher_num, curr_soln_arr, cipher_string, cipher_length, result, unigram, bigram, trigram, greenhouse, backpointers, uselessvariableoriginallynamedthreshold);
 
       if(pass_num == 1){
         // order the solutions.
@@ -1045,6 +967,8 @@ int main(int argc, char * argv[]){
               size_count = soln_sizes[curr_soln.size() + 1] + 1;
             }
             soln_sizes[curr_soln.size() + 1] = size_count;
+            // TODO: Why not write normally?
+            // if(soln_sizes.count(curr_soln.size() + 1) > 0){+=1} else =1
           }
         }
       }
