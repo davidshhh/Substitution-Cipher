@@ -552,6 +552,7 @@ int main(int argc, char * argv[]){
   // and add each entry into a unigram map.
   // The basic map has size plain_num, with a default entry of -1.
   // unigram is an array whose ith index is *(unigram + i)
+
   unigram = (double *) malloc(plain_num * sizeof(double));
   for(i = 0; i < plain_num; i++){
     *(unigram + i) = -1;
@@ -634,7 +635,7 @@ int main(int argc, char * argv[]){
      }
   }
   bigrams_file.close();
-  
+
   uselessvariableoriginallynamedthreshold = 0;
 
   // Read the trigram file.
@@ -729,9 +730,9 @@ int main(int argc, char * argv[]){
   // Create the greenhouse array.
   greenhouse = (double *) malloc(plain_num * plain_num * cipher_num * 3 * sizeof(double));
   backpointers = (int *) malloc(plain_num * plain_num * cipher_num * 3 * sizeof(int));
-  
-  // set up priority heap
-  // set up a map of sizes
+
+  // set up priority heap.
+  // set up a map of sizes.
   // Set up a starting solution and add it to the heap.
   double * result = (double *) malloc((plain_num * cipher_num) * sizeof(double));
   map<int, int> start_soln;
@@ -742,7 +743,6 @@ int main(int argc, char * argv[]){
   // In english, spaces are easy to find, so we can set them here.  We'll try to avoid it, though.
   // (to set the spaces, just uncomment here, and set all of the codes in the test to space -> space)
   start_soln[0] = 0;
-
   map<int, int> soln_sizes;
   soln_sizes[start_soln.size()] = 1;
   long pass_num = 0;  // TODO: the CUDA version initializes to 1 here
@@ -775,9 +775,7 @@ int main(int argc, char * argv[]){
     map<int, int> curr_soln = aStar.top().second.first;
     full_curr_soln = aStar.top().second.second;
     double curr_soln_prob = aStar.top().first;
-    // change here
-    int curr_soln_size = curr_soln.size();
-    for(i = 0; i < plain_num; i++){
+    for(i = 0; i < plain_num; i++){  // Copy all curr soln to curr_soln_arr
       if(curr_soln.count(i) > 0){
         *(curr_soln_arr + i) = curr_soln[i];
       } else {
@@ -793,8 +791,8 @@ int main(int argc, char * argv[]){
 
     cout << "Starting Viterbi Algorithm: \n" << endl;
     cout << "  Queue size: " << (aStar.size() + 1) << "\n" << endl;
-    cout << "  Solution size: " << curr_soln_size << endl;
-    cout << "  Solution probability " << curr_soln_prob << endl;
+    cout << "  Solution size: " << curr_soln.size() << "\n" << endl;
+    cout << "  Solution probability " << curr_soln_prob << "\n" << endl;
     cout << "  Number of passes: " << ++pass_num << "\n" << endl;
     
     stringstream temp_soln;
@@ -817,7 +815,7 @@ int main(int argc, char * argv[]){
     } else {
       // Uncomment the preferred order for adding solutions.  If using the most constrained first setting, uncomment the last first and loop lines.
       // ********** last first ********** //
-      int curr_endpoint = *(cipher_string + lastcount[curr_soln_size]);
+      int curr_endpoint = *(cipher_string + lastcount[curr_soln.size()]);
       // ********** max freq ********** //
       //int curr_endpoint = *(cipher_uni_inv + curr_soln.size());  
       // ********** min freq ********** //
@@ -871,7 +869,7 @@ int main(int argc, char * argv[]){
             numconstrained[most_constrained_index] = -1;
           }
       }
-      curr_endpoint = *(letter_order + curr_soln_size);
+      curr_endpoint = *(letter_order + curr_soln.size());
 
       // About here, put in a filtering algorithm for the partial solutions.
         // (1) a. For each remaining cipher letter, find the possible plaintext letters.
@@ -972,10 +970,9 @@ int main(int argc, char * argv[]){
           }
         }
       }
-
     }
 
-  } 
+  }
 
   // return the results.
 

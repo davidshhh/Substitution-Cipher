@@ -991,7 +991,7 @@ int main(int argc, char * argv[]){
   map<int, int> soln_sizes;
   soln_sizes[start_soln.size()] = 1;
   long pass_num = 1;
-  
+
   // A boolean variable that will tell us when we're finished looking for the solution.
 
   bool found = false;
