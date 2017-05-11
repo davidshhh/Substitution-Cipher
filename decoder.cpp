@@ -1295,6 +1295,15 @@ int main(int argc, char * argv[]){
     soln_string += "}";
     cout << "  Solution: " << soln_string << "\n" << endl;
 
+    soln_stream_1.str("");
+    for(soln_iter = start_soln.begin(); soln_iter != start_soln.end(); ++soln_iter){
+      soln_stream_1 << "," <<  plain_alpha[soln_iter->first] << ":" << cipher_alpha[soln_iter->second];
+    }
+    soln_string = soln_stream_1.str();
+    soln_string.replace(0, 1, "{");
+    soln_string += "}";
+    cout << "  Solution alphabet: " << soln_string << "\n" << endl;
+
     stringstream soln_stream_2;
     for(soln_iter = soln_sizes.begin(); soln_iter != soln_sizes.end(); ++soln_iter){
       soln_stream_2 << "," <<  soln_iter->first << ":" << soln_iter->second;
