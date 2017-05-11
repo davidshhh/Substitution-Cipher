@@ -614,6 +614,8 @@ void ReadChrModel(
   // loop variable.
   int i;
 
+  cerr << "Reading character level frequencies...";
+
   // for the unigrams, read each line, process it into its parts,
   // and add each entry into a unigram map.
   // The basic map has size plain_num, with a default entry of -1.
@@ -748,6 +750,7 @@ void ReadChrModel(
      }
   }
   trigrams_file.close();
+  cerr << " Done." << endl;
 }
 
 
@@ -969,6 +972,7 @@ int main(int argc, char * argv[]){
   // Recall that we're going to turn everything into numbers, and first read everything into a vector,
   // then transfer the vector to an array.
 
+  cerr << "Creating cipher string...";
   ifstream cipher_file(cipher_name.c_str());
   while( getline(cipher_file, temp, '\n')){
     for(i = 0; i < temp.size(); i++){
@@ -983,6 +987,8 @@ int main(int argc, char * argv[]){
     *(cipher_string + i) = cipher_string_vec[i];
   }
   cipher_file.close();
+
+  cerr << " Processing last cipher characters...";
 
   // get the locations of the last characters in the cipher.
   // This will be used to determine the order in which letters are 
@@ -1000,6 +1006,7 @@ int main(int argc, char * argv[]){
       num_last++;
     }
   }
+  cerr << " Done." << endl;
 
   // Create the greenhouse array.
   greenhouse = (double *) malloc(plain_num * plain_num * cipher_num * 3 * sizeof(double));
@@ -1039,6 +1046,8 @@ int main(int argc, char * argv[]){
     full_curr_soln[i] = 0;
   }
   aStar.push(pair<double, pair<map<int, int>, vector<double> > >(-1, pair<map<int, int>, vector<double> >(start_soln, full_curr_soln ) ) );
+
+  cerr << "Started A* search." << endl;
 
   // The main part of the program: pop solutions and run the genviterbi algorithm to grow solutions until
   // the final solution is found.
