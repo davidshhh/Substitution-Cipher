@@ -458,6 +458,7 @@ void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_st
   for(l = 0; l < plain_num; l++){
     if(*(part_soln + l) >= 0){
       *(part_inv + *(part_soln + l)) = l;
+      cerr << "Partial solution: " << plain_alpha[l] << ':' << cipher_alpha[*(part_soln + l)] << endl;
     }
   }
 
@@ -487,6 +488,8 @@ void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_st
     vector<bool> appeared_cipher(cipher_num, 0);
 
     string pattern = GetPattern(cipher_string, word_start, word_end);
+
+    cerr << pattern << endl << endl << endl;
 
     // Counts the number of l:c pairs that have either
     //   found their (most probable) consistent word with this pattern, or
@@ -569,7 +572,7 @@ void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_st
         // assign the potential assignment which will make the word consistent.
         for (j = word_start; j < word_end; ++j) {
           c = *(cipher_string + j);
-          l = (*word_iter).at(j - word_start);
+          l = inv_plain[(*word_iter).at(j - word_start)];
 
           // We need to be careful that the later words with the same pattern which are also
           //   consistent do not add to result again. Just the found_count is not enough.
@@ -582,14 +585,14 @@ void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_st
               && (*(result + c * plain_num + l) >= 0)) {
             *(new_result + c * plain_num + l) += word_prob;
             // TODO DELETE
-            //cerr << plain_alpha[l] << ":" << cipher_alpha[c] << endl;
+            cerr << plain_alpha[l] << ":" << cipher_alpha[c] << endl;
           } else {
             // Not consistent with partial solution or with known forbidden mappings)
             // Or this mapping has already rendered zero probability previously during this pass
             // TODO: This will be assigned again and again which is not necessary
             *(new_result + c * plain_num + l) = -1;
             // TODO DELETE
-            //cerr << plain_alpha[l] << ":/" << cipher_alpha[c] << endl;
+            cerr << plain_alpha[l] << ":/" << cipher_alpha[c] << endl;
           }
           ++found_count;
           found[c * plain_num + l] = true;
@@ -1167,7 +1170,16 @@ int main(int argc, char * argv[]){
           }
       }
 
+      for(i = 0; i < cipher_num; i++) {
+        cerr << cipher_alpha[*(letter_order + i)];
+      }
+      cerr << endl;
+      if (pass_num == 3)
+// TODO DELETE
+        return 1;
       curr_endpoint = *(letter_order + curr_soln.size());
+
+      cerr << cipher_alpha[curr_endpoint] << endl;
 
       // use the gen_viterbi algorithm to grow larger solutions.  // TODO: Change to ours
       WordViterbi(plain_num, cipher_num, curr_soln_arr, cipher_string, cipher_length, result);
