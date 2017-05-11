@@ -459,7 +459,7 @@ void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_st
   for(l = 0; l < plain_num; l++){
     if(*(part_soln + l) >= 0){
       *(part_inv + *(part_soln + l)) = l;
-      cerr << plain_alpha[l] << ':' << cipher_alpha[*(part_soln + l)];
+      cerr << plain_alpha[l] << ':' << cipher_alpha[*(part_soln + l)] << ", ";
     }
   }
   cerr << endl;
