@@ -602,6 +602,7 @@ void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_st
   }
 
   free(new_result);
+  free(part_inv);
 }
 
 
@@ -1313,6 +1314,7 @@ int main(int argc, char * argv[]){
   free(bigram);
   free(trigram);
   free(cipher_string);
+  free(letter_order);
   return 0;
 }
 
