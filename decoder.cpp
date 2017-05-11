@@ -996,9 +996,9 @@ int main(int argc, char * argv[]){
   // added to the solution.
 
   int num_last = 0;
-  map<int, int> last;
-  map<int, int> lastcount;
-  map<int, int> invlastcount;  // From cipher letter to the position of its order from last
+  map<int, int> last;          // From cipher letter to the last occurrence index
+  map<int, int> lastcount;     // From the order from last to cipher letter
+  map<int, int> invlastcount;  // From cipher letter to its order from last
   for(i = cipher_length - 1; i >= 0; i--){
     if(last.count(*(cipher_string + i)) == 0){
       last[*(cipher_string + i)] = i;
@@ -1159,15 +1159,23 @@ int main(int argc, char * argv[]){
             numconstrained[most_constrained_index] = -1;
           }
 
-        // For some reason, letter_order is in reversed order as it should
-        // Thus, I'm reversing it here, hackily.
+        // letter_order up to here should be correct if cipher alphabet is the exact alphabet that
+        // appeared in cipher text. Those not in cipher text will be incorrectly put to the front.
+        // Thus, I'm moving those not in cipher text to the end, hackily.
         i = 1;
-        l = cipher_num - 1;
-        while (i < l) {
-          int tmp = *(letter_order + i);
-          *(letter_order + i++) = *(letter_order + l);
-          *(letter_order + l--) = tmp;
+        l = cipher_num - last.size() + 1;
+        if (i != l) {  // actual cipher alphabet is incomplete
+          while (l < cipher_num) {
+            int tmp = *(letter_order + i);
+            *(letter_order + i++) = *(letter_order + l);
+            *(letter_order + l++) = tmp;
+          }
         }
+        // Print cipher letter order of fixing TODO: DELETE
+        for(i = 0; i < cipher_num; i++) {
+          cerr << cipher_alpha[*(letter_order + i)];
+        }
+        cerr << endl;
       }
 
       curr_endpoint = *(letter_order + curr_soln.size());
