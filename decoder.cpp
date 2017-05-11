@@ -429,7 +429,7 @@ string GetPattern(int *cipher_string, int i, int j) {
     map<char, int> dict;
     string pattern = "";
 
-    for( int ind = i; ind <= j; ind++ ) {
+    for( int ind = i; ind < j; ind++ ) {
       int cipher_char = *(cipher_string + ind);
       if (dict.count(cipher_char) < 1)
         dict[cipher_char] = count++;
@@ -440,8 +440,15 @@ string GetPattern(int *cipher_string, int i, int j) {
 
 
 void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_string, long cipher_length, double * result) {
-  int i, l, b;
+  int i, j, l, b, c;
   long word_start, word_end;
+
+  double *new_result = (double *) malloc(plain_num * cipher_num * sizeof(double));
+
+  // Initialize new_results to 0 (probability 1, to be "multiplied" by other probabilities)
+  // It is very important to initialize to 0 rather than -1, because this is used for checking consistency.
+  for(i = 0; i < plain_num + cipher_num; ++i)
+    *(new_result + i) = 0;
 
   // This part will create a reverse map (inverse partial solution).
   int * part_inv = (int *) malloc(cipher_num*sizeof(int));
@@ -456,42 +463,162 @@ void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_st
 
   word_start = 0;
   word_end = 0;
+
   // Scan the cipher string word by word and calculate result probabilities gradually
   while(word_start < cipher_length) {
+
     // Find the next space (0)
     while (*(cipher_string + word_end) != 0) { ++word_end; }
-    if (word_end - word_start <= 0) { continue; }
+
+    if (word_end <= word_start) {
+      // Set the start of the new word after space
+      word_start = ++word_end;
+      continue;
+    }
+
+    // Which cipher letters are in this cipher word?
+    {
+    map<int, bool> cipher_letters;
+    for (j = word_start; j < word_end; ++j)
+      cipher_letters[*(cipher_string + j)] = 0;
+    // TODO: Actually no need this, maybe just scan through the cipher word
+    }
+
+    vector<bool> appeared_cipher(cipher_num, 0);
 
     string pattern = GetPattern(cipher_string, word_start, word_end);
+
+    // Counts the number of l:c pairs that have either
+    //   found their (most probable) consistent word with this pattern, or
+    //   cannot be consistent
+    //     (either with the pattern / or with partial solution / or with known forbidden mappings).
+    int found_count = 0;
+
+    // Checks whether an l:c pair has been found to have consistent word with this pattern, where
+    //   c appears in this cipher word; those who doesn't won't need this.
+    // (Thus, this should actually use a sparse data structure; but our alphabet is small so who cares.)
+    vector<bool> found(plain_num * cipher_num, false);
+
     vector<string> words = patlist[pattern];
-    for (i = 0; i < words.size(); ++i) {
-      // Linear search in list from most frequent to least frequent
-      // TODO: Implement for each cipher letter to fix, for each plaintext to assign; consistent with partial solution
+
+    // Linear search in list from most frequent to least frequent
+    for(vector<string>::const_iterator word_iter = words.begin(); word_iter != words.end(); ++word_iter) {
+
+        // No need to keep searching if all possible mappings have already found consistent words
+        // TODO: No need to keep searching if there are only -1 mappings left
+        if (found_count == cipher_num * plain_num)
+          // It's likely this is rarely reached
+          break;
+
+        // Check if the word is consistent with known partial solution.
+        bool consistent = true;
+        for (j = word_start; j < word_end; ++j) {
+          c = *(cipher_string + j);
+          appeared_cipher[c] = 1;
+          l = *(part_inv + c);
+          if (l != -1) {
+            if (l != (*word_iter).at(j - word_start)) {
+              consistent = false;
+              break;
+            }
+          }
+        }
+        if (!consistent)
+          continue;
+
+        double word_prob = word_unigram[*word_iter];
+
+        // For each cipher letter not in the word, put in as soon as we find some consistent word.
+        for (c = 0; c < cipher_num; ++c) {
+          if (!appeared_cipher[c]) {
+            for (l = 0; l < plain_num; ++l) {
+              // They cannot be mapped by letters in the word
+              if (  (!found[c * plain_num + l])
+                  &&((*word_iter).find(plain_alpha[l]) == string::npos)
+              ) {
+                if (   (*(new_result + c * plain_num + l) >= 0)
+                    && ((*(part_soln + l) == -1) || (*(part_soln + l) == c))
+                    && ((*(part_inv + c) == -1) || (*(part_inv + c) == l))
+                    && (*(result + c * plain_num + l) >= 0)) {
+                  *(new_result + c * plain_num + l) += word_prob;
+
+                  // TODO DELETE
+                  //cerr << plain_alpha[l] << ":" << cipher_alpha[c] << endl;
+                } else{
+                  // Not consistent with partial solution or with known forbidden mappings)
+                  // Or this mapping has already rendered zero probability previously during this pass
+                  // TODO: This will be assigned again and again which is not necessary
+                  *(new_result + c * plain_num + l) = -1;
+
+                  // TODO DELETE
+                  //cerr << plain_alpha[l] << ":/" << cipher_alpha[c] << endl;
+                }
+              ++found_count;
+              found[c * plain_num + l] = true;
+              }
+            }
+          }
+        }
+
+          // TODO: Optimize
+          // TODO: No need to keep searching if there are only -1 mappings left (see above)
+          // TODO: may found++ for those l:c with c in cipher word and l already not possible
+
+        // For the rest of cipher letters to potentially fix (those in the cipher word),
+        // which are also not in the domain of the partial solution,
+        // assign the potential assignment which will make the word consistent.
+        for (j = word_start; j < word_end; ++j) {
+          c = *(cipher_string + j);
+          l = (*word_iter).at(j - word_start);
+
+          // We need to be careful that the later words with the same pattern which are also
+          //   consistent do not add to result again. Just the found_count is not enough.
+          if (found[c * plain_num + l])
+            continue;
+
+          if (   (*(new_result + c * plain_num + l) >= 0)
+              && ((*(part_soln + l) == -1) || (*(part_soln + l) == c))
+              && ((*(part_inv + c) == -1) || (*(part_inv + c) == l))
+              && (*(result + c * plain_num + l) >= 0)) {
+            *(new_result + c * plain_num + l) += word_prob;
+            // TODO DELETE
+            //cerr << plain_alpha[l] << ":" << cipher_alpha[c] << endl;
+          } else {
+            // Not consistent with partial solution or with known forbidden mappings)
+            // Or this mapping has already rendered zero probability previously during this pass
+            // TODO: This will be assigned again and again which is not necessary
+            *(new_result + c * plain_num + l) = -1;
+            // TODO DELETE
+            //cerr << plain_alpha[l] << ":/" << cipher_alpha[c] << endl;
+          }
+          ++found_count;
+          found[c * plain_num + l] = true;
+
+        }
+
     }
+
+    // For those l:c that are not found consistent with this cipher word & pattern
+    // TODO: back off to trigram model
+    // Assign their probability to -1 (zero probability)
+    for (i = 0; i < plain_num * cipher_num; ++i)
+      if (!found[i]) {
+        *(new_result + i) = -1;
+        // TODO DELETE
+        //cerr << plain_alpha[i % plain_num] << ":/" << cipher_alpha[i / plain_num] << endl;
+      }
 
     // Set the start of the new word after space
     word_start = ++word_end;
   }
 
 
-  // Find and return the solutions:
-  for(l = 0; l < plain_num * cipher_num; l++){
-    *(result + l) = -1;
+  // Copy and return the solutions:
+  for(i = 0; i < plain_num * cipher_num; ++i){
+    *(result + i) = *(new_result + i);
   }
-  for(l = 0; l < plain_num; l++){
-    for(b = 0; b < cipher_num; b++){
-      int j;
-      for(j = 0; j < plain_num; j++){
-        if(*(greenhouse + ((((cipher_length - 1) % 3) * plain_num + l) * cipher_num + b)* plain_num + j) > 0){
-          if(*(result + b * plain_num + j) <= 0){
-            *(result + b * plain_num + j) = *(greenhouse + ((((cipher_length - 1) % 3) * plain_num + l) * cipher_num + b)* plain_num + j);
-          } else {
-            *(result + b * plain_num + j) = fmin(*(result + b * plain_num + j), *(greenhouse + ((((cipher_length - 1) % 3) * plain_num + l) * cipher_num + b)* plain_num + j));
-          }
-        }
-      }
-    }
-  }
+
+  free(new_result);
 }
 
 
