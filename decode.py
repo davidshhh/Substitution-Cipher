@@ -74,7 +74,13 @@ def get_solution(solution_file):
             for pair in s.split(','):
                 (cipher, solution) = pair.split(":")
                 sol[chr(int(cipher) + ord('a') - 1)] = chr(int(solution) + ord('a') - 1)
-    del sol[chr(ord('a') - 1)]
+            del sol[chr(ord('a') - 1)]
+        # TODO: Modify to use only one of these two
+        if "Solution alphabet: " in l:
+            s = l[l.find('{') + 1: l.find('}')]
+            for pair in s.split(','):
+                (cipher, solution) = pair.split(":")
+                sol[cipher] = solution
     sol[' '] = '_'
     return sol
 
