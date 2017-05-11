@@ -447,10 +447,11 @@ void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_st
 
   // Initialize new_results to 0 (probability 1, to be "multiplied" by other probabilities)
   // It is very important to initialize to 0 rather than -1, because this is used for checking consistency.
-  for(i = 0; i < plain_num + cipher_num; ++i)
+  for(i = 0; i < plain_num * cipher_num; ++i)
     *(new_result + i) = 0;
 
   // This part will create a reverse map (inverse partial solution).
+  cerr << "Partial solution: ";
   int * part_inv = (int *) malloc(cipher_num*sizeof(int));
   for(l = 0; l < cipher_num; l++){
     *(part_inv + l) = -1;
@@ -458,9 +459,10 @@ void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_st
   for(l = 0; l < plain_num; l++){
     if(*(part_soln + l) >= 0){
       *(part_inv + *(part_soln + l)) = l;
-      cerr << "Partial solution: " << plain_alpha[l] << ':' << cipher_alpha[*(part_soln + l)] << endl;
+      cerr << plain_alpha[l] << ':' << cipher_alpha[*(part_soln + l)];
     }
   }
+  cerr << endl;
 
   word_start = 0;
   word_end = 0;
@@ -478,18 +480,9 @@ void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_st
     }
 
     // Which cipher letters are in this cipher word?
-    {
-    map<int, bool> cipher_letters;
-    for (j = word_start; j < word_end; ++j)
-      cipher_letters[*(cipher_string + j)] = 0;
-    // TODO: Actually no need this, maybe just scan through the cipher word
-    }
-
     vector<bool> appeared_cipher(cipher_num, 0);
 
     string pattern = GetPattern(cipher_string, word_start, word_end);
-
-    cerr << pattern << endl << endl << endl;
 
     // Counts the number of l:c pairs that have either
     //   found their (most probable) consistent word with this pattern, or
@@ -520,7 +513,7 @@ void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_st
           appeared_cipher[c] = 1;
           l = *(part_inv + c);
           if (l != -1) {
-            if (l != (*word_iter).at(j - word_start)) {
+            if (l != inv_plain[(*word_iter).at(j - word_start)]) {
               consistent = false;
               break;
             }
@@ -544,17 +537,11 @@ void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_st
                     && ((*(part_inv + c) == -1) || (*(part_inv + c) == l))
                     && (*(result + c * plain_num + l) >= 0)) {
                   *(new_result + c * plain_num + l) += word_prob;
-
-                  // TODO DELETE
-                  //cerr << plain_alpha[l] << ":" << cipher_alpha[c] << endl;
                 } else{
                   // Not consistent with partial solution or with known forbidden mappings)
                   // Or this mapping has already rendered zero probability previously during this pass
                   // TODO: This will be assigned again and again which is not necessary
                   *(new_result + c * plain_num + l) = -1;
-
-                  // TODO DELETE
-                  //cerr << plain_alpha[l] << ":/" << cipher_alpha[c] << endl;
                 }
               ++found_count;
               found[c * plain_num + l] = true;
@@ -584,15 +571,11 @@ void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_st
               && ((*(part_inv + c) == -1) || (*(part_inv + c) == l))
               && (*(result + c * plain_num + l) >= 0)) {
             *(new_result + c * plain_num + l) += word_prob;
-            // TODO DELETE
-            cerr << plain_alpha[l] << ":" << cipher_alpha[c] << endl;
           } else {
             // Not consistent with partial solution or with known forbidden mappings)
             // Or this mapping has already rendered zero probability previously during this pass
             // TODO: This will be assigned again and again which is not necessary
             *(new_result + c * plain_num + l) = -1;
-            // TODO DELETE
-            cerr << plain_alpha[l] << ":/" << cipher_alpha[c] << endl;
           }
           ++found_count;
           found[c * plain_num + l] = true;
@@ -605,11 +588,8 @@ void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_st
     // TODO: back off to trigram model
     // Assign their probability to -1 (zero probability)
     for (i = 0; i < plain_num * cipher_num; ++i)
-      if (!found[i]) {
+      if (!found[i])
         *(new_result + i) = -1;
-        // TODO DELETE
-        //cerr << plain_alpha[i % plain_num] << ":/" << cipher_alpha[i / plain_num] << endl;
-      }
 
     // Set the start of the new word after space
     word_start = ++word_end;
@@ -1168,18 +1148,19 @@ int main(int argc, char * argv[]){
             *(letter_order + i) = most_constrained_index;
             numconstrained[most_constrained_index] = -1;
           }
+
+        // For some reason, letter_order is in reversed order as it should
+        // Thus, I'm reversing it here, hackily.
+        i = 1;
+        l = cipher_num - 1;
+        while (i < l) {
+          int tmp = *(letter_order + i);
+          *(letter_order + i++) = *(letter_order + l);
+          *(letter_order + l--) = tmp;
+        }
       }
 
-      for(i = 0; i < cipher_num; i++) {
-        cerr << cipher_alpha[*(letter_order + i)];
-      }
-      cerr << endl;
-      if (pass_num == 3)
-// TODO DELETE
-        return 1;
       curr_endpoint = *(letter_order + curr_soln.size());
-
-      cerr << cipher_alpha[curr_endpoint] << endl;
 
       // use the gen_viterbi algorithm to grow larger solutions.  // TODO: Change to ours
       WordViterbi(plain_num, cipher_num, curr_soln_arr, cipher_string, cipher_length, result);
