@@ -144,7 +144,7 @@ public:
 // Returns: Nothing, but alters the results array in place.
 // TODO: This documentation is from the CUDA version decoder.cu, we may want to re-read the code if we use this function.
 
-void genviterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_string, long cipher_length, double * result, double * unigram, double * bigram, double * trigram, double * greenhouse, int * backpointers, double uselessvariableoriginallynamedthreshold){
+void genviterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_string, long cipher_length, double * result, double * greenhouse, int * backpointers){
 
   // loop variables
   //   -i: the index of the column of the greenhouse and backpointer tables that are being filled.
@@ -584,12 +584,52 @@ void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_st
 
     }
 
-    // For those l:c that are not found consistent with this cipher word & pattern
-    // TODO: back off to trigram model
-    // Assign their probability to -1 (zero probability)
+    // Check if there is any l:c not found consistent with this cipher word & pattern
+    bool complete = true;
+    int first_unfound_cipher = -1;  // Small optimizing technique
     for (i = 0; i < plain_num * cipher_num; ++i)
-      if (!found[i])
-        *(new_result + i) = -1;
+      if (!found[i]) {
+        complete = false;
+        first_unfound_cipher = i / plain_num;
+        break;
+      }
+
+    if (!complete) {
+      // For those l:c that are not found consistent with this cipher word & pattern
+      // Back off to trigram model
+      cerr << "Calculating Backoff for word ";
+      for (i = word_start; i < word_end; ++i) {
+        cerr << cipher_alpha[*(cipher_string + i)];
+      } // TODO: DELETE this debug code
+      cerr << endl;
+
+      // Create sub greenhouse and backpointers
+      double *sub_greenhouse = (double *) malloc(plain_num * plain_num * cipher_num * 3 * sizeof(double));
+      int *sub_backpointers = (int *) malloc(plain_num * plain_num * cipher_num * 3 * sizeof(int));
+
+      // Create sub result array for this word
+      double *sub_result = (double *) malloc((plain_num * cipher_num) * sizeof(double));
+      // Calculate the probability of the sequence (word_start - 1, word_end + 1)
+      genviterbi(plain_num, cipher_num, part_soln, cipher_string + word_start - 1, word_end - word_start + 2, sub_result, sub_greenhouse, sub_backpointers);
+
+      for (c = first_unfound_cipher; c < cipher_num; ++c) for (l = 0; l < plain_num; ++l)
+        if (!found[c * plain_num + l]) {
+          if (   (*(new_result + c * plain_num + l) >= 0)
+              && (*(sub_result + c * plain_num + l) >= 0)  // Assume even chr model may render 0 prob
+              && ((*(part_soln + l) == -1) || (*(part_soln + l) == c))
+              && ((*(part_inv + c) == -1) || (*(part_inv + c) == l))
+              && (*(result + c * plain_num + l) >= 0)) {
+            *(new_result + c * plain_num + l) += *(sub_result + c * plain_num + l);
+          } else {
+            // Not consistent with partial solution or with known forbidden mappings)
+            // Or this mapping has already rendered zero probability previously during this pass
+            *(new_result + c * plain_num + l) = -1;
+          }
+        }
+      free(sub_greenhouse);
+      free(sub_backpointers);
+      free(sub_result);
+    }
 
     // Set the start of the new word after space
     word_start = ++word_end;
@@ -1117,7 +1157,7 @@ int main(int argc, char * argv[]){
         // use the gen_viterbi algorithm
         // only in the first iteration to find most constrained order.
         // and its pruned search space is kept to be used as a start point.
-        genviterbi(plain_num, cipher_num, curr_soln_arr, cipher_string, cipher_length, result, unigram, bigram, trigram, greenhouse, backpointers, uselessvariableoriginallynamedthreshold);
+        genviterbi(plain_num, cipher_num, curr_soln_arr, cipher_string, cipher_length, result, greenhouse, backpointers);
 
         // order the solutions.
 
