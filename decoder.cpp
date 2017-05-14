@@ -12,6 +12,7 @@
 #include <sstream>
 
 using namespace std;
+#define LAMBDA 0.97
 
 /* --------------------------------- Global Definitions ------------------------------------ */
 
@@ -522,7 +523,7 @@ void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_st
         if (!consistent)
           continue;
 
-        double word_prob = word_unigram[*word_iter];
+        double word_prob = word_unigram[*word_iter] - log(LAMBDA);  // neg log domain
 
         // For each cipher letter not in the word, put in as soon as we find some consistent word.
         for (c = 0; c < cipher_num; ++c) {
@@ -597,11 +598,6 @@ void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_st
     if (!complete) {
       // For those l:c that are not found consistent with this cipher word & pattern
       // Back off to trigram model
-      cerr << "Calculating Backoff for word ";
-      for (i = word_start; i < word_end; ++i) {
-        cerr << cipher_alpha[*(cipher_string + i)];
-      } // TODO: DELETE this debug code
-      cerr << endl;
 
       // Create sub greenhouse and backpointers
       double *sub_greenhouse = (double *) malloc(plain_num * plain_num * cipher_num * 3 * sizeof(double));
@@ -613,13 +609,14 @@ void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_st
       genviterbi(plain_num, cipher_num, part_soln, cipher_string + word_start - 1, word_end - word_start + 2, sub_result, sub_greenhouse, sub_backpointers);
 
       for (c = first_unfound_cipher; c < cipher_num; ++c) for (l = 0; l < plain_num; ++l)
-        if (!found[c * plain_num + l]) {
+        if ((!found[c * plain_num + l]) && (*(result + c * plain_num + l) >= 0)) {
           if (   (*(new_result + c * plain_num + l) >= 0)
               && (*(sub_result + c * plain_num + l) >= 0)  // Assume even chr model may render 0 prob
               && ((*(part_soln + l) == -1) || (*(part_soln + l) == c))
               && ((*(part_inv + c) == -1) || (*(part_inv + c) == l))
-              && (*(result + c * plain_num + l) >= 0)) {
-            *(new_result + c * plain_num + l) += *(sub_result + c * plain_num + l);
+              ) {
+            // neg log domain
+            *(new_result + c * plain_num + l) += *(sub_result + c * plain_num + l) - log(1.0 - LAMBDA);
           } else {
             // Not consistent with partial solution or with known forbidden mappings)
             // Or this mapping has already rendered zero probability previously during this pass
