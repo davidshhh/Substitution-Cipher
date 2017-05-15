@@ -86,7 +86,7 @@ python cipher.py A.txt 50cipher.txt --length 50
 where `A.txt` is the plain text file with a space at the beginning.
 It will write the ciphertext to `50cipher.txt` and the random key mapping to standard output.
 
-`decode.py` A script that decodes the cipher text with the solver's output mapping. An optional `--key` file can be specified as the golden mapping. If a golden mapping is known, this script outputs the accuracy of the solution, in terms of the percentage of mappings that are correct, as well as the percentage of correct letters in the converted plain tex.
+`decode.py` A script that decodes the cipher text with the solver's output mapping. An optional `--key` file can be specified as the golden mapping. If a golden mapping is known, this script outputs the accuracy of the solution, in terms of the percentage of mappings that are correct, as well as the percentage of correct letters in the converted plain text.
 
 `most_complex_pattern.py` does some inspection of the pattern list file.
 
