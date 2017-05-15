@@ -591,9 +591,13 @@ void WordViterbi(int plain_num, int cipher_num, int * part_soln, int * cipher_st
     int first_unfound_cipher = -1;  // Small optimizing technique
     for (i = 0; i < plain_num * cipher_num; ++i)
       if (!found[i]) {
-        complete = false;
-        first_unfound_cipher = i / plain_num;
-        break;
+        if (LAMBDA == 1) {
+          *(new_result + i) = -1;
+        } else {
+          complete = false;
+          first_unfound_cipher = i / plain_num;
+          break;
+        }
       }
 
     if (!complete) {
