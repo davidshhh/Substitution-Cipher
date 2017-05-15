@@ -18,9 +18,13 @@ We modified the data for compatibility.
 `decoder.cpp` is our main solver program.
 
 To run the solver, first compile it
-```g++ -o solve decoder.cpp```
+```
+g++ -o solve decoder.cpp
+```
 Then run it with a profile file specified
-````./solve profile``
+```
+./solve profile
+```
 where `profile` is an input file with the format as described below.
 
 #### Input files
@@ -76,7 +80,9 @@ Some accompanying `.key` files generated with ciphertexts
 `cipher.py` A script to generate ciphertext of certain length from a plain text.
 
 Run it like:
-```python cipher.py A.txt 50cipher.txt --length 50```
+```
+python cipher.py A.txt 50cipher.txt --length 50
+```
 where `A.txt` is the plain text file with a space at the beginning.
 It will write the ciphertext to `50cipher.txt` and the random key mapping to standard output.
 
