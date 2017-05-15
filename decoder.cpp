@@ -12,7 +12,8 @@
 #include <sstream>
 
 using namespace std;
-#define LAMBDA 0.97
+// If lambda is 1, no back-off is used. Only corpus words will be regarded possible.
+#define LAMBDA 0.9999
 
 /* --------------------------------- Global Definitions ------------------------------------ */
 

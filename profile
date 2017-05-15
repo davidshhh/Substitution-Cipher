@@ -5,6 +5,5 @@ lmtrain_nyt_word.patlist.wlm1
 lmtrain_nyt_word.chr.clm1.noEOS
 lmtrain_nyt_word.chr.clm2.noEOS
 lmtrain_nyt_word.chr.clm3.noEOS.nomiss
-smallcipher.txt
-smallplain.txt
+multiwordcipher.txt
 
