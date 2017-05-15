@@ -4,7 +4,7 @@ David Hsieh  thsieh10@gmail.com
 
 ### Credits
 
-This is our final project for Declarative Methods at the Johns Hopkins University, taught by Professor Jason Eisner.
+This is our final project for Declarative Methods (2017) at the Johns Hopkins University, taught by Professor Jason Eisner.
 
 Code and the original paper were from Eric Corlett at University of Toronto.
 
